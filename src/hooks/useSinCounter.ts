@@ -24,7 +24,7 @@ export const useSinCounter = () => {
   // Load today's count from Firestore or localStorage
   useEffect(() => {
     const loadTodaysCount = async () => {
-      if (!user) {
+      if (!user || !db) {
         setLoading(false);
         return;
       }
@@ -67,7 +67,7 @@ export const useSinCounter = () => {
    * Increment the sin counter
    */
   const increment = async () => {
-    if (!user) return;
+    if (!user || !db) return;
 
     const newCount = count + 1;
     setCount(newCount);
@@ -96,7 +96,7 @@ export const useSinCounter = () => {
    * Decrement the sin counter (minimum 0)
    */
   const decrement = async () => {
-    if (!user || count <= 0) return;
+    if (!user || !db || count <= 0) return;
 
     const newCount = count - 1;
     setCount(newCount);
@@ -125,7 +125,7 @@ export const useSinCounter = () => {
    * Sync offline data with Firestore
    */
   const syncOfflineData = async () => {
-    if (!user) return;
+    if (!user || !db) return;
 
     const offlineKey = `sin-count-${user.uid}-${today}`;
     const offlineCount = localStorage.getItem(offlineKey);

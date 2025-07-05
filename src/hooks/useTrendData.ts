@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
-import { collection, query, orderBy, getDocs, where } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { useAuth } from '@/hooks/useAuth';
-import { subDays, format } from 'date-fns';
+import { db } from '@/lib/firebase';
+import { format, subDays } from 'date-fns';
+import { collection, getDocs, orderBy, query, where } from 'firebase/firestore';
+import { useEffect, useState } from 'react';
 
 interface TrendData {
   date: string;
@@ -33,6 +33,12 @@ export const useTrendData = (period: TrendPeriod = 7) => {
       try {
         const startDate = subDays(new Date(), period);
         const startDateStr = format(startDate, 'yyyy-MM-dd');
+
+        if (!db) {
+          setError('Database not initialized');
+          setLoading(false);
+          return;
+        }
 
         const q = query(
           collection(db, 'users', user.uid, 'dailyCounts'),
@@ -80,14 +86,18 @@ export const useTrendData = (period: TrendPeriod = 7) => {
   const getPercentageChange = (): number | null => {
     if (data.length < 2) return null;
 
-    const currentPeriodSum = data.reduce((sum, d) => sum + d.count, 0);
-    const previousPeriodSum = data
-      .slice(0, Math.floor(data.length / 2))
-      .reduce((sum, d) => sum + d.count, 0);
+    // Compare today's count with yesterday's count
+    const today = data[data.length - 1];
+    const yesterday = data[data.length - 2];
+    
+    if (!today || !yesterday) return null;
+    
+    // If yesterday was 0, return null to avoid division by zero
+    if (yesterday.count === 0) {
+      return today.count > 0 ? 100 : null;
+    }
 
-    if (previousPeriodSum === 0) return null;
-
-    return ((currentPeriodSum - previousPeriodSum) / previousPeriodSum) * 100;
+    return ((today.count - yesterday.count) / yesterday.count) * 100;
   };
 
   return {

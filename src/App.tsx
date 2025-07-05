@@ -13,8 +13,8 @@ function AppContent() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin" />
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -29,7 +29,16 @@ function App() {
   return (
     <AuthProvider>
       <AppContent />
-      <Toaster position="top-right" richColors theme="light" />
+      <Toaster 
+        position="top-center" 
+        richColors 
+        theme="system"
+        toastOptions={{
+          style: {
+            fontSize: '14px',
+          },
+        }}
+      />
     </AuthProvider>
   );
 }
