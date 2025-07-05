@@ -1,0 +1,28 @@
+# Dependencies
+node_modules
+
+# Environment files
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Firebase
+.firebaserc
+firebase.json
+firestore.rules
+firestore.indexes.json
+
+# Development
+.husky
+.github
+
+# Test files
+src/test/
+*.test.ts
+*.test.tsx
+vitest.config.ts
+
+# Other
+.DS_Store
+*.log
