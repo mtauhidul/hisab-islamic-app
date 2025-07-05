@@ -28,28 +28,100 @@
   <body>
     <div id="root"></div>
 
-    <!-- Load runtime configuration before the main app -->
+    <!-- Load runtime configuration synchronously before the main app -->
     <script>
-      // Load config.js synchronously using XMLHttpRequest to ensure it's available before Firebase initialization
-      (function () {
-        try {
-          const xhr = new XMLHttpRequest();
-          xhr.open('GET', '/config.js?' + Date.now(), false); // Synchronous request with cache busting
-          xhr.send();
-          
-          if (xhr.status === 200) {
-            // Execute the config script content
-            new Function(xhr.responseText)();
-            console.log('🔧 Runtime config loaded synchronously');
-          } else {
-            console.warn('⚠️ Failed to load config.js, status:', xhr.status);
+      (function() {
+        // Domain-specific cache busting for custom domains
+        var isCustomDomain = window.location.hostname === 'hisabdaily.com';
+        var isVercelDomain = window.location.hostname.includes('vercel.app');
+        
+        // More aggressive cache busting for custom domains
+        var cacheBuster = isCustomDomain 
+          ? Date.now() + '-' + Math.random().toString(36).substr(2, 9) + '-' + Math.floor(Math.random() * 10000)
+          : Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+        
+        var configUrl = '/config.js?v=' + cacheBuster;
+        
+        // Add domain-specific parameters
+        if (isCustomDomain) {
+          configUrl += '&domain=custom&t=' + performance.now();
+        }
+        
+        console.log('🔄 Loading config.js:', {
+          domain: window.location.hostname,
+          isCustomDomain: isCustomDomain,
+          cacheBuster: cacheBuster
+        });
+        
+        var maxRetries = isCustomDomain ? 3 : 1;
+        var retryCount = 0;
+        
+        function loadConfig() {
+          try {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', configUrl, false); // Synchronous request
+            
+            // Extra aggressive headers for custom domains
+            xhr.setRequestHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+            xhr.setRequestHeader('Pragma', 'no-cache');
+            xhr.setRequestHeader('Expires', '0');
+            
+            if (isCustomDomain) {
+              xhr.setRequestHeader('X-Custom-Domain', 'true');
+              xhr.setRequestHeader('X-Force-Fresh', Date.now().toString());
+            }
+            
+            xhr.send();
+            
+            if (xhr.status === 200) {
+              // Execute the config script content
+              new Function(xhr.responseText)();
+              console.log('✅ Runtime config loaded successfully');
+              
+              // Verify config was loaded
+              if (window.__FIREBASE_CONFIG__ && window.__FIREBASE_CONFIG__.VITE_FIREBASE_API_KEY) {
+                console.log('✅ Firebase config verified:', {
+                  apiKey: window.__FIREBASE_CONFIG__.VITE_FIREBASE_API_KEY ? 'Set' : 'Missing',
+                  projectId: window.__FIREBASE_CONFIG__.VITE_FIREBASE_PROJECT_ID || 'Missing',
+                  domain: window.location.hostname
+                });
+                return true;
+              } else {
+                console.warn('⚠️ Firebase config not properly loaded from runtime config');
+                return false;
+              }
+            } else {
+              console.warn('⚠️ Failed to load config.js, status:', xhr.status);
+              return false;
+            }
+          } catch (error) {
+            console.warn('⚠️ Failed to load config.js synchronously:', error);
+            return false;
           }
-        } catch (error) {
-          console.warn('⚠️ Failed to load config.js synchronously:', error);
-          // Fallback to dynamic loading
-          const script = document.createElement('script');
-          script.src = '/config.js?' + Date.now();
+        }
+        
+        // Try loading config with retries for custom domains
+        var success = loadConfig();
+        
+        while (!success && retryCount < maxRetries && isCustomDomain) {
+          retryCount++;
+          console.log('🔄 Retrying config load (attempt ' + (retryCount + 1) + ')...');
+          
+          // Update cache buster for retry
+          cacheBuster = Date.now() + '-' + Math.random().toString(36).substr(2, 9) + '-retry' + retryCount;
+          configUrl = '/config.js?v=' + cacheBuster + '&domain=custom&retry=' + retryCount;
+          
+          success = loadConfig();
+        }
+        
+        // Fallback to dynamic loading if all retries failed
+        if (!success) {
+          console.warn('⚠️ All config loading attempts failed, using dynamic fallback');
+          var script = document.createElement('script');
+          script.src = '/config.js?fallback=' + Date.now();
           script.async = false;
+          script.setAttribute('data-timestamp', Date.now());
+          script.setAttribute('data-domain', window.location.hostname);
           document.head.appendChild(script);
         }
       })();

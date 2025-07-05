@@ -21,13 +21,15 @@ const envVars = {
   'VITE_FIREBASE_APP_ID': process.env.VITE_FIREBASE_APP_ID || '',
 };
 
-// Generate build timestamp for cache busting
+// Generate build timestamp and ID for cache busting
 const buildTimestamp = Date.now();
+const buildId = Math.random().toString(36).substr(2, 9);
 
 // Generate the config.js content
 const configContent = `// Runtime configuration for production
 // Generated at build time: ${new Date().toISOString()}
 // Build timestamp: ${buildTimestamp}
+// Build ID: ${buildId}
 
 (function() {
   if (typeof window !== 'undefined') {
@@ -43,15 +45,19 @@ const configContent = `// Runtime configuration for production
 
     // Mark the config as loaded with timestamp
     window.__FIREBASE_CONFIG_LOADED__ = ${buildTimestamp};
+    window.__FIREBASE_BUILD_ID__ = "${buildId}";
 
-    // Debug logging for development
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-      console.log('🔧 Firebase config loaded:', {
-        timestamp: ${buildTimestamp},
-        apiKey: window.__FIREBASE_CONFIG__.VITE_FIREBASE_API_KEY ? 'Set' : 'Missing',
-        projectId: window.__FIREBASE_CONFIG__.VITE_FIREBASE_PROJECT_ID || 'Missing'
-      });
-    }
+    // Debug logging
+    var isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    var logPrefix = isDev ? '🔧' : '🔧';
+    var envType = isDev ? 'development' : 'production';
+    
+    console.log(logPrefix + ' Firebase config loaded (' + envType + '):', {
+      timestamp: ${buildTimestamp},
+      buildId: "${buildId}",
+      apiKey: window.__FIREBASE_CONFIG__.VITE_FIREBASE_API_KEY ? 'Set' : 'Missing',
+      projectId: window.__FIREBASE_CONFIG__.VITE_FIREBASE_PROJECT_ID || 'Missing'
+    });
   }
 })();`;
 
@@ -59,6 +65,11 @@ const configContent = `// Runtime configuration for production
 fs.writeFileSync(configPath, configContent);
 
 console.log('✅ Runtime config.js generated successfully');
+console.log('📦 Build info:', {
+  timestamp: buildTimestamp,
+  buildId: buildId,
+  date: new Date().toISOString()
+});
 
 // Log which variables were set (without revealing values)
 Object.entries(envVars).forEach(([key, value]) => {

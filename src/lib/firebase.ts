@@ -47,34 +47,43 @@ const waitForRuntimeConfig = (): Promise<void> => {
       return;
     }
 
+    let attempts = 0;
+    const maxAttempts = 100; // Maximum 5 seconds (100 * 50ms)
+
     const checkConfig = () => {
+      attempts++;
+      
       const runtimeConfig = (window as { __FIREBASE_CONFIG__?: Record<string, string> })
         .__FIREBASE_CONFIG__;
       
       if (runtimeConfig && runtimeConfig.VITE_FIREBASE_API_KEY) {
         console.log('✅ Runtime config found:', { 
           apiKey: runtimeConfig.VITE_FIREBASE_API_KEY ? 'Set' : 'Missing',
-          projectId: runtimeConfig.VITE_FIREBASE_PROJECT_ID || 'Missing'
+          projectId: runtimeConfig.VITE_FIREBASE_PROJECT_ID || 'Missing',
+          attempts
         });
+        resolve();
+        return;
+      }
+
+      // If we've reached max attempts, resolve anyway and fallback to env vars
+      if (attempts >= maxAttempts) {
+        console.log('⏳ Max attempts reached, falling back to env variables');
         resolve();
         return;
       }
 
       // Check if we're in development mode
       if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        // In development, don't wait indefinitely - use env vars after short delay
-        console.log('⏳ Development mode: checking for runtime config...');
-        setTimeout(() => {
-          const configStillMissing = !((window as { __FIREBASE_CONFIG__?: Record<string, string> }).__FIREBASE_CONFIG__?.VITE_FIREBASE_API_KEY);
-          if (configStillMissing) {
-            console.log('ℹ️ Runtime config not available, using Vite env variables');
-          }
+        // In development, don't wait too long - use env vars after short delay
+        if (attempts >= 10) { // 500ms max wait in development
+          console.log('ℹ️ Development mode: Using Vite env variables');
           resolve();
-        }, 200);
-        return;
+          return;
+        }
       }
 
-      // In production, keep checking for runtime config
+      // Continue checking
       setTimeout(checkConfig, 50);
     };
 
@@ -98,7 +107,7 @@ const initializeFirebase = async (): Promise<{ auth: Auth; db: Firestore }> => {
       await waitForRuntimeConfig();
 
       // Get the configuration
-      const firebaseConfig = {
+      let firebaseConfig = {
         apiKey: getEnvVar('VITE_FIREBASE_API_KEY'),
         authDomain: getEnvVar('VITE_FIREBASE_AUTH_DOMAIN'),
         projectId: getEnvVar('VITE_FIREBASE_PROJECT_ID'),
@@ -117,7 +126,52 @@ const initializeFirebase = async (): Promise<{ auth: Auth; db: Firestore }> => {
         const missingKeys = Object.entries(firebaseConfig)
           .filter(([, value]) => !value || value === '')
           .map(([key]) => key);
-        throw new Error(`Firebase configuration is invalid. Missing: ${missingKeys.join(', ')}`);
+        
+        console.error('❌ Firebase configuration is invalid. Missing:', missingKeys);
+        
+        // In production, try to reload config.js once if it's missing
+        if (typeof window !== 'undefined' && 
+            window.location.hostname !== 'localhost' && 
+            window.location.hostname !== '127.0.0.1' &&
+            missingKeys.length > 0) {
+          
+          console.log('🔄 Attempting to reload config.js...');
+          
+          try {
+            const xhr = new XMLHttpRequest();
+            const cacheBuster = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+            xhr.open('GET', `/config.js?reload=${cacheBuster}`, false);
+            xhr.setRequestHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+            xhr.setRequestHeader('Pragma', 'no-cache');
+            xhr.send();
+            
+            if (xhr.status === 200) {
+              new Function(xhr.responseText)();
+              console.log('✅ Config.js reloaded successfully');
+              
+              // Retry with new config
+              const retryConfig = {
+                apiKey: getEnvVar('VITE_FIREBASE_API_KEY'),
+                authDomain: getEnvVar('VITE_FIREBASE_AUTH_DOMAIN'),
+                projectId: getEnvVar('VITE_FIREBASE_PROJECT_ID'),
+                storageBucket: getEnvVar('VITE_FIREBASE_STORAGE_BUCKET'),
+                messagingSenderId: getEnvVar('VITE_FIREBASE_MESSAGING_SENDER_ID'),
+                appId: getEnvVar('VITE_FIREBASE_APP_ID'),
+              };
+              
+              if (isValidConfig(retryConfig)) {
+                firebaseConfig = retryConfig;
+                console.log('✅ Firebase config updated after reload');
+              }
+            }
+          } catch (reloadError) {
+            console.warn('⚠️ Failed to reload config.js:', reloadError);
+          }
+        }
+        
+        if (!isValidConfig(firebaseConfig)) {
+          throw new Error(`Firebase configuration is invalid. Missing: ${missingKeys.join(', ')}`);
+        }
       }
 
       // Initialize Firebase app if not already initialized

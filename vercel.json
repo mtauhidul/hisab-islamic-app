@@ -6,6 +6,13 @@
   "framework": "vite",
   "rewrites": [
     {
+      "source": "/config.js",
+      "destination": "/config.js",
+      "headers": {
+        "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0"
+      }
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
@@ -29,7 +36,23 @@
       "headers": [
         {
           "key": "Cache-Control",
-          "value": "public, max-age=300, must-revalidate"
+          "value": "no-cache, no-store, must-revalidate, max-age=0, s-maxage=0"
+        },
+        {
+          "key": "Pragma",
+          "value": "no-cache"
+        },
+        {
+          "key": "Expires",
+          "value": "0"
+        },
+        {
+          "key": "X-Accel-Expires",
+          "value": "0"
+        },
+        {
+          "key": "Surrogate-Control",
+          "value": "no-store"
         }
       ]
     },
