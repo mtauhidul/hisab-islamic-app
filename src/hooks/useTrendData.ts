@@ -1,5 +1,5 @@
 import { useAuth } from '@/hooks/useAuth';
-import { db } from '@/lib/firebase';
+import { getFirebaseDb } from '@/lib/firebase';
 import { format, subDays } from 'date-fns';
 import { collection, onSnapshot, orderBy, query, where } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
@@ -29,58 +29,75 @@ export const useTrendData = (period: TrendPeriod = 7) => {
     setLoading(true);
     setError(null);
 
-    if (!db) {
-      setError('Database not initialized');
-      setLoading(false);
-      return;
-    }
+    const setupListener = async () => {
+      try {
+        const db = await getFirebaseDb();
+        
+        const startDate = subDays(new Date(), period);
+        const startDateStr = format(startDate, 'yyyy-MM-dd');
 
-    const startDate = subDays(new Date(), period);
-    const startDateStr = format(startDate, 'yyyy-MM-dd');
+        const q = query(
+          collection(db, 'users', user.uid, 'dailyCounts'),
+          where('__name__', '>=', startDateStr),
+          orderBy('__name__')
+        );
 
-    const q = query(
-      collection(db, 'users', user.uid, 'dailyCounts'),
-      where('__name__', '>=', startDateStr),
-      orderBy('__name__')
-    );
+        // Use real-time listener for automatic updates
+        const unsubscribe = onSnapshot(
+          q,
+          (querySnapshot) => {
+            const trendData: TrendData[] = [];
 
-    // Use real-time listener for automatic updates
-    const unsubscribe = onSnapshot(
-      q,
-      (querySnapshot) => {
-        const trendData: TrendData[] = [];
+            querySnapshot.forEach((doc) => {
+              const data = doc.data();
+              trendData.push({
+                date: doc.id,
+                count: data.count || 0,
+              });
+            });
 
-        querySnapshot.forEach((doc) => {
-          const data = doc.data();
-          trendData.push({
-            date: doc.id,
-            count: data.count || 0,
-          });
-        });
+            // Fill in missing dates with count 0
+            const filledData: TrendData[] = [];
+            for (let i = period - 1; i >= 0; i--) {
+              const date = format(subDays(new Date(), i), 'yyyy-MM-dd');
+              const existingData = trendData.find((d) => d.date === date);
+              filledData.push({
+                date,
+                count: existingData?.count || 0,
+              });
+            }
 
-        // Fill in missing dates with count 0
-        const filledData: TrendData[] = [];
-        for (let i = period - 1; i >= 0; i--) {
-          const date = format(subDays(new Date(), i), 'yyyy-MM-dd');
-          const existingData = trendData.find((d) => d.date === date);
-          filledData.push({
-            date,
-            count: existingData?.count || 0,
-          });
-        }
+            setData(filledData);
+            setLoading(false);
+          },
+          (err) => {
+            console.error('Error fetching trend data:', err);
+            setError('Failed to load trend data');
+            setLoading(false);
+          }
+        );
 
-        setData(filledData);
+        return unsubscribe;
+      } catch (error) {
+        console.error('Error setting up Firestore listener:', error);
+        setError('Failed to initialize database connection');
         setLoading(false);
-      },
-      (err) => {
-        console.error('Error fetching trend data:', err);
-        setError('Failed to load trend data');
-        setLoading(false);
+        return () => {};
       }
-    );
+    };
+
+    let unsubscribe: (() => void) | undefined;
+
+    setupListener().then((unsub) => {
+      unsubscribe = unsub;
+    });
 
     // Cleanup function
-    return () => unsubscribe();
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, [user, period]);
 
   /**

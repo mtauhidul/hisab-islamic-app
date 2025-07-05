@@ -4,7 +4,7 @@
 
 A privacy-first Islamic web application built with React, TypeScript, and Firebase for daily self-accountability and spiritual awareness.
 
-**"Track. Regret. Repent."** - A modern approach to traditional Islamic *Muhasabah* (self-accountability).
+**"Track. Regret. Repent."** - A modern approach to traditional Islamic _Muhasabah_ (self-accountability).
 
 ## Features
 
@@ -73,13 +73,12 @@ A privacy-first Islamic web application built with React, TypeScript, and Fireba
    VITE_FIREBASE_STORAGE_BUCKET=your_project_id.appspot.com
    VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
    VITE_FIREBASE_APP_ID=your_app_id
-   
+
    # Fanar API for Islamic deed verification
    VITE_FANAR_API_KEY=your_fanar_api_key_here
    ```
 
 4. **Get Fanar API Access**
-
    1. Visit [https://api.fanar.qa/request](https://api.fanar.qa/request)
    2. Request API access for Islamic deed verification
    3. Once approved, get your API key from the dashboard
@@ -112,7 +111,9 @@ A privacy-first Islamic web application built with React, TypeScript, and Fireba
 The app uses a hybrid approach for authentic Islamic deed verification:
 
 #### Primary API: Reminder.dev (Free)
+
 **Features**:
+
 - Free API with no authentication required
 - LLM-powered Islamic Q&A with Quran and Hadith references
 - Works immediately without setup
@@ -121,6 +122,7 @@ The app uses a hybrid approach for authentic Islamic deed verification:
 **Endpoint**: `https://reminder.dev/api/search`
 
 **Request**:
+
 ```json
 {
   "q": "Is listening to music permissible (halal) or forbidden (haram) in Islam?"
@@ -128,6 +130,7 @@ The app uses a hybrid approach for authentic Islamic deed verification:
 ```
 
 **Response**:
+
 ```json
 {
   "q": "Is listening to music permissible in Islam?",
@@ -146,7 +149,9 @@ The app uses a hybrid approach for authentic Islamic deed verification:
 ```
 
 #### Secondary API: Fanar API (Premium)
+
 **Features**:
+
 - Professional Islamic-RAG model trained on authentic sources
 - Provides rulings based on Quran, Hadith, and scholarly consensus
 - More comprehensive source coverage
@@ -227,6 +232,7 @@ pnpm firebase:emulators # Start Firebase emulators
 > **✅ Already Deployed!** HisabDaily is live at: [https://hisabdaily.vercel.app](https://hisabdaily.vercel.app)
 
 1. **Push to GitHub**
+
    ```bash
    git add .
    git commit -m "feat: ready for production deployment"
@@ -234,26 +240,26 @@ pnpm firebase:emulators # Start Firebase emulators
    ```
 
 2. **Deploy to Vercel**
-   
+
    [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new)
-   
+
    Or manually:
-   
+
    ```bash
    # Install Vercel CLI
    npm i -g vercel
-   
+
    # Deploy
    vercel
-   
+
    # Deploy to production
    vercel --prod
    ```
 
 3. **Set Environment Variables in Vercel**
-   
+
    Go to your Vercel project dashboard and add these environment variables:
-   
+
    ```
    VITE_FIREBASE_API_KEY
    VITE_FIREBASE_AUTH_DOMAIN
@@ -265,7 +271,7 @@ pnpm firebase:emulators # Start Firebase emulators
    ```
 
 4. **Configure Custom Domain (Optional)**
-   
+
    In Vercel dashboard, go to Settings > Domains to add your custom domain.
 
 ### Important Notes
@@ -280,12 +286,15 @@ pnpm firebase:emulators # Start Firebase emulators
 ## Screenshots
 
 ### 🏠 Homepage
+
 Beautiful, motivational landing page with Islamic values and clear call-to-action.
 
 ### 🔐 Authentication
+
 Clean, accessible sign-in/sign-up with privacy promise.
 
 ### 📊 Dashboard
+
 - **Counter Tab**: Daily tracking with percentage changes
 - **Checker Tab**: Islamic deed verification with sources
 - **Trends Tab**: Beautiful charts showing progress over time
@@ -308,7 +317,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 This app is developed with the utmost respect for Islamic principles and values. All Islamic content and rulings are sourced from authentic Islamic texts and scholarly consensus through the Fanar API.
 
-*If you find any content that may not align with Islamic teachings, please contact us immediately for correction.*
+_If you find any content that may not align with Islamic teachings, please contact us immediately for correction._
+
 ```
 
 ---
@@ -316,3 +326,4 @@ This app is developed with the utmost respect for Islamic principles and values.
 **May Allah (سبحانه وتعالى) accept our efforts and guide us on the straight path. Ameen.**
 
 _"And whoever fears Allah - He will make for him a way out."_ - Quran 65:2
+```

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import type { FieldValue } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { getFirebaseDb } from '@/lib/firebase';
 import { useAuth } from '@/hooks/useAuth';
 import { format } from 'date-fns';
 
@@ -24,13 +24,14 @@ export const useSinCounter = () => {
   // Load today's count from Firestore or localStorage
   useEffect(() => {
     const loadTodaysCount = async () => {
-      if (!user || !db) {
+      if (!user) {
         setLoading(false);
         return;
       }
 
       // Try to get from Firestore first
       try {
+        const db = await getFirebaseDb();
         const docRef = doc(db, 'users', user.uid, 'dailyCounts', today);
         const docSnap = await getDoc(docRef);
 
@@ -67,7 +68,7 @@ export const useSinCounter = () => {
    * Increment the sin counter
    */
   const increment = async () => {
-    if (!user || !db) return;
+    if (!user) return;
 
     const newCount = count + 1;
     setCount(newCount);
@@ -78,6 +79,7 @@ export const useSinCounter = () => {
 
     // Try to sync with Firestore
     try {
+      const db = await getFirebaseDb();
       const docRef = doc(db, 'users', user.uid, 'dailyCounts', today);
       await setDoc(docRef, {
         count: newCount,
@@ -96,7 +98,7 @@ export const useSinCounter = () => {
    * Decrement the sin counter (minimum 0)
    */
   const decrement = async () => {
-    if (!user || !db || count <= 0) return;
+    if (!user || count <= 0) return;
 
     const newCount = count - 1;
     setCount(newCount);
@@ -107,6 +109,7 @@ export const useSinCounter = () => {
 
     // Try to sync with Firestore
     try {
+      const db = await getFirebaseDb();
       const docRef = doc(db, 'users', user.uid, 'dailyCounts', today);
       await setDoc(docRef, {
         count: newCount,
@@ -125,13 +128,14 @@ export const useSinCounter = () => {
    * Sync offline data with Firestore
    */
   const syncOfflineData = async () => {
-    if (!user || !db) return;
+    if (!user) return;
 
     const offlineKey = `sin-count-${user.uid}-${today}`;
     const offlineCount = localStorage.getItem(offlineKey);
 
     if (offlineCount) {
       try {
+        const db = await getFirebaseDb();
         const docRef = doc(db, 'users', user.uid, 'dailyCounts', today);
         await setDoc(docRef, {
           count: parseInt(offlineCount, 10),

@@ -14,6 +14,7 @@
 ### Method 1: Deploy via GitHub (Recommended)
 
 1. **Push to GitHub**:
+
    ```bash
    git add .
    git commit -m "feat: ready for vercel deployment"
@@ -27,6 +28,7 @@
 
 3. **Configure Environment Variables**:
    Add these in Vercel Dashboard > Settings > Environment Variables:
+
    ```
    VITE_FIREBASE_API_KEY=your_firebase_api_key_here
    VITE_FIREBASE_AUTH_DOMAIN=your_project_id.firebaseapp.com
@@ -42,16 +44,19 @@
 ### Method 2: Deploy via CLI
 
 1. **Install Vercel CLI** (already done):
+
    ```bash
    pnpm add -D vercel
    ```
 
 2. **Login to Vercel**:
+
    ```bash
    npx vercel login
    ```
 
 3. **Deploy Preview**:
+
    ```bash
    pnpm deploy:preview
    ```

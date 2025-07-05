@@ -4,44 +4,64 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Islamic spiritual growth app - Track your actions, feel genuine regret, and repent sincerely. Privacy-first daily accountability for Muslims." />
+    <meta
+      name="description"
+      content="Islamic spiritual growth app - Track your actions, feel genuine regret, and repent sincerely. Privacy-first daily accountability for Muslims."
+    />
     <meta name="theme-color" content="#09090b" />
-    
+
     <!-- PWA Manifest -->
     <link rel="manifest" href="/manifest.json" />
-    
+
     <!-- Apple PWA Meta Tags -->
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="HisabDaily" />
-    
+
     <!-- Preconnect to improve performance -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
     <title>HisabDaily - Track. Regret. Repent.</title>
   </head>
   <body>
     <div id="root"></div>
-    
+
     <!-- Load runtime configuration before the main app -->
     <script>
-      // Load config.js dynamically to avoid Vite bundling warning
-      (function() {
-        const script = document.createElement('script');
-        script.src = '/config.js?' + Date.now(); // Cache bust
-        script.async = false; // Ensure it loads before main module
-        document.head.appendChild(script);
+      // Load config.js synchronously using XMLHttpRequest to ensure it's available before Firebase initialization
+      (function () {
+        try {
+          const xhr = new XMLHttpRequest();
+          xhr.open('GET', '/config.js?' + Date.now(), false); // Synchronous request with cache busting
+          xhr.send();
+          
+          if (xhr.status === 200) {
+            // Execute the config script content
+            new Function(xhr.responseText)();
+            console.log('🔧 Runtime config loaded synchronously');
+          } else {
+            console.warn('⚠️ Failed to load config.js, status:', xhr.status);
+          }
+        } catch (error) {
+          console.warn('⚠️ Failed to load config.js synchronously:', error);
+          // Fallback to dynamic loading
+          const script = document.createElement('script');
+          script.src = '/config.js?' + Date.now();
+          script.async = false;
+          document.head.appendChild(script);
+        }
       })();
     </script>
     <script type="module" src="/src/main.tsx"></script>
-    
+
     <!-- Service Worker Registration -->
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
+          navigator.serviceWorker
+            .register('/sw.js')
             .then((registration) => {
               console.log('SW registered: ', registration);
             })
