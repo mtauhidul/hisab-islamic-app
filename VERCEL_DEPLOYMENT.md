@@ -28,13 +28,13 @@
 3. **Configure Environment Variables**:
    Add these in Vercel Dashboard > Settings > Environment Variables:
    ```
-   VITE_FIREBASE_API_KEY=AIzaSyCZK71OV1lwcV9Ma4r-o3V3A0UuAcwHfxY
-   VITE_FIREBASE_AUTH_DOMAIN=hisab-islamic-app.firebaseapp.com
-   VITE_FIREBASE_PROJECT_ID=hisab-islamic-app
-   VITE_FIREBASE_STORAGE_BUCKET=hisab-islamic-app.firebasestorage.app
-   VITE_FIREBASE_MESSAGING_SENDER_ID=931613743919
-   VITE_FIREBASE_APP_ID=1:931613743919:web:36c9359144aaadadee5fda
-   VITE_AI_API_URL=http://localhost:3001/api/ai/verifyDeed
+   VITE_FIREBASE_API_KEY=your_firebase_api_key_here
+   VITE_FIREBASE_AUTH_DOMAIN=your_project_id.firebaseapp.com
+   VITE_FIREBASE_PROJECT_ID=your_project_id
+   VITE_FIREBASE_STORAGE_BUCKET=your_project_id.firebasestorage.app
+   VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+   VITE_FIREBASE_APP_ID=your_app_id
+   VITE_AI_API_URL=your_ai_api_url
    ```
 
 4. **Deploy**: Click "Deploy" - Vercel will build and deploy automatically
