@@ -6,13 +6,6 @@
   "framework": "vite",
   "rewrites": [
     {
-      "source": "/config.js",
-      "destination": "/config.js",
-      "headers": {
-        "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0"
-      }
-    },
-    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
@@ -36,7 +29,7 @@
       "headers": [
         {
           "key": "Cache-Control",
-          "value": "no-cache, no-store, must-revalidate, max-age=0, s-maxage=0"
+          "value": "no-cache, no-store, must-revalidate, max-age=0"
         },
         {
           "key": "Pragma",
@@ -45,14 +38,6 @@
         {
           "key": "Expires",
           "value": "0"
-        },
-        {
-          "key": "X-Accel-Expires",
-          "value": "0"
-        },
-        {
-          "key": "Surrogate-Control",
-          "value": "no-store"
         }
       ]
     },
