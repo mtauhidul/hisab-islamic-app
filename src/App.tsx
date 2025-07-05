@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Toaster } from 'sonner';
+import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { useAuth } from '@/hooks/useAuth';
 import Dashboard from '@/components/Dashboard';
@@ -53,6 +55,8 @@ function App() {
           },
         }}
       />
+      <Analytics />
+      <SpeedInsights />
     </AuthProvider>
   );
 }
