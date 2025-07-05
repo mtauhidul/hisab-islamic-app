@@ -32,7 +32,7 @@
     <script>
       (function() {
         // Domain-specific cache busting for custom domains
-        var isCustomDomain = window.location.hostname === 'hisabdaily.com';
+        var isCustomDomain = window.location.hostname === 'hisabdaily.com' || window.location.hostname === 'www.hisabdaily.com';
         var isVercelDomain = window.location.hostname.includes('vercel.app');
         
         // More aggressive cache busting for custom domains
