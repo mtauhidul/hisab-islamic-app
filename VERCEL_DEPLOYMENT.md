@@ -1,4 +1,4 @@
-# Vercel Deployment Guide for Hisab Islamic App
+# Vercel Deployment Guide for HisabDaily Islamic App
 
 ## Prerequisites
 

@@ -21,7 +21,7 @@ Go to: https://console.firebase.google.com/project/hisab-islamic-app
 1. Go to Project Settings (gear icon)
 2. Scroll down to "Your apps"
 3. If no web app exists, click "Add app" > Web icon
-4. Register app with name: "Hisab Web App"
+4. Register app with name: "HisabDaily Web App"
 5. Copy the configuration (should match your .env file)
 
 ### 4. API Key Restrictions (if any)
@@ -42,7 +42,7 @@ If the current config doesn't work, you can generate a new one:
 1. In Firebase Console > Project Settings
 2. Scroll to "Your apps" section
 3. Click "Add app" > Web
-4. Register new app: "Hisab Islamic App"
+4. Register new app: "HisabDaily Islamic App"
 5. Copy the new config to your .env file
 
 ## Current Config in .env

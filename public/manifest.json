@@ -1,11 +1,11 @@
 {
-  "name": "Hisab - Islamic Daily Tracker",
-  "short_name": "Hisab",
-  "description": "Privacy-first Islamic web app for tracking daily deeds and spiritual growth",
+  "name": "HisabDaily - Track. Regret. Repent.",
+  "short_name": "HisabDaily",
+  "description": "Islamic spiritual growth app - Track your actions, feel genuine regret, and repent sincerely. Privacy-first daily accountability for Muslims.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f8fafc",
-  "theme_color": "#0f3b2e",
+  "background_color": "#09090b",
+  "theme_color": "#09090b",
   "orientation": "portrait-primary",
   "icons": [
     {

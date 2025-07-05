@@ -1,7 +1,13 @@
 <svg width="192" height="192" viewBox="0 0 192 192" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="192" height="192" rx="32" fill="#0f3b2e"/>
-  <path d="M48 96c0-26.51 21.49-48 48-48s48 21.49 48 48-21.49 48-48 48-48-21.49-48-48z" fill="#f7f2e9"/>
-  <path d="M96 64c-8.837 0-16 7.163-16 16v32c0 8.837 7.163 16 16 16s16-7.163 16-16V80c0-8.837-7.163-16-16-16z" fill="#0f3b2e"/>
-  <circle cx="96" cy="96" r="4" fill="#f7f2e9"/>
-  <text x="96" y="152" text-anchor="middle" fill="#f7f2e9" font-family="serif" font-size="16" font-weight="600">حساب</text>
+  <!-- Background for dark mode -->
+  <rect width="192" height="192" rx="32" fill="#09090b"/>
+
+  <!-- Jannah Gate Arch (dome only, centered) -->
+  <path d="M96 35 
+           C65 35, 45 60, 45 100 
+           L45 120 
+           L147 120 
+           L147 100 
+           C147 60, 127 35, 96 35Z" 
+        fill="#22c55e"/>
 </svg>

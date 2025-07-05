@@ -1,12 +1,12 @@
-# Hisab (حساب) - Islamic Daily Tracker
+# HisabDaily (حساب) - Islamic Daily Tracker
 
-A privacy-first Islamic web application built with React, TypeScript, and Firebase for tracking daily deeds and spiritual growth.
+A privacy-first Islamic web application built with React, TypeScript, and Firebase for daily self-accountability and spiritual awareness.
 
 ## Features
 
 - **Privacy-First**: Only stores minimal data (uid, date, count) - no deed text or verdicts
 - **Deed Verification**: Check if actions are permissible according to Islamic teachings
-- **Daily Sin Counter**: Track daily count with automatic midnight reset
+- **Daily Self-Accountability**: Track daily count with automatic midnight reset
 - **Trend Analysis**: View progress over 7, 30, 90, 180, or 365 days
 - **Offline Support**: Works offline with automatic sync when reconnected
 - **PWA Ready**: Installable as a Progressive Web App
@@ -53,19 +53,31 @@ A privacy-first Islamic web application built with React, TypeScript, and Fireba
    cp .env.example .env
    ```
 
-   Edit `.env` with your Firebase configuration:
+   Edit `.env` with your Firebase and Fanar API configuration:
 
    ```env
+   # Firebase Configuration
    VITE_FIREBASE_API_KEY=your_api_key_here
    VITE_FIREBASE_AUTH_DOMAIN=your_project_id.firebaseapp.com
    VITE_FIREBASE_PROJECT_ID=your_project_id
    VITE_FIREBASE_STORAGE_BUCKET=your_project_id.appspot.com
    VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
    VITE_FIREBASE_APP_ID=your_app_id
-   VITE_AI_API_URL=http://localhost:3001/api/ai/verifyDeed
+   
+   # Fanar API for Islamic deed verification
+   VITE_FANAR_API_KEY=your_fanar_api_key_here
    ```
 
-4. **Set up Firebase**
+4. **Get Fanar API Access**
+
+   1. Visit [https://api.fanar.qa/request](https://api.fanar.qa/request)
+   2. Request API access for Islamic deed verification
+   3. Once approved, get your API key from the dashboard
+   4. Add the API key to your `.env` file as `VITE_FANAR_API_KEY`
+
+   **Note**: The app uses Fanar's Islamic-RAG model which provides authentic Islamic rulings based on Quran, Hadith, and scholarly consensus.
+
+5. **Set up Firebase**
 
    ```bash
    # Install Firebase CLI
@@ -78,14 +90,71 @@ A privacy-first Islamic web application built with React, TypeScript, and Fireba
    firebase init
    ```
 
-5. **Start development server**
+6. **Start development server**
    ```bash
    pnpm dev
    ```
 
-## API Contract
+## API Integration
 
-### AI Deed Verification
+### Islamic Deed Verification APIs
+
+The app uses a hybrid approach for authentic Islamic deed verification:
+
+#### Primary API: Reminder.dev (Free)
+**Features**:
+- Free API with no authentication required
+- LLM-powered Islamic Q&A with Quran and Hadith references
+- Works immediately without setup
+- JSON responses with citations
+
+**Endpoint**: `https://reminder.dev/api/search`
+
+**Request**:
+```json
+{
+  "q": "Is listening to music permissible (halal) or forbidden (haram) in Islam?"
+}
+```
+
+**Response**:
+```json
+{
+  "q": "Is listening to music permissible in Islam?",
+  "answer": "The permissibility of music is debated among scholars...",
+  "references": [
+    {
+      "source": "quran",
+      "text": "And there are others who hurt the Prophet...",
+      "metadata": {
+        "chapter": "9",
+        "verse": "61"
+      }
+    }
+  ]
+}
+```
+
+#### Secondary API: Fanar API (Premium)
+**Features**:
+- Professional Islamic-RAG model trained on authentic sources
+- Provides rulings based on Quran, Hadith, and scholarly consensus
+- More comprehensive source coverage
+- Requires API key (free tier available)
+
+**Endpoint**: `https://api.fanar.qa/v1/chat/completions`
+
+**Setup**: Get your API key from [api.fanar.qa/request](https://api.fanar.qa/request)
+
+### API Rate Limits
+
+- **Reminder.dev**: No authentication required (reasonable usage)
+- **Fanar Islamic-RAG**: 50 requests/minute
+- **Fanar Models**: 50 requests/minute
+
+## Legacy API Contract (Deprecated)
+
+**Note**: The following API contract is deprecated. The app now uses Fanar API.
 
 **Endpoint**: `POST /api/ai/verifyDeed`
 

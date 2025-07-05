@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hisab-v1';
+const CACHE_NAME = 'hisabdaily-v1';
 const urlsToCache = [
   '/',
   '/manifest.json',

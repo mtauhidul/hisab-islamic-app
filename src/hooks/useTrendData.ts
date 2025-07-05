@@ -89,9 +89,9 @@ export const useTrendData = (period: TrendPeriod = 7) => {
     // Compare today's count with yesterday's count
     const today = data[data.length - 1];
     const yesterday = data[data.length - 2];
-    
+
     if (!today || !yesterday) return null;
-    
+
     // If yesterday was 0, return null to avoid division by zero
     if (yesterday.count === 0) {
       return today.count > 0 ? 100 : null;

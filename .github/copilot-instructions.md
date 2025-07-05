@@ -1,6 +1,6 @@
 <!-- Use this file to provide workspace-specific custom instructions to Copilot. For more details, visit https://code.visualstudio.com/docs/copilot/copilot-customization#_use-a-githubcopilotinstructionsmd-file -->
 
-# Hisab (حساب) - Islamic Web App
+# HisabDaily (حساب) - Islamic Web App
 
 This is a privacy-first Islamic web application built with React, TypeScript, and Firebase.
 

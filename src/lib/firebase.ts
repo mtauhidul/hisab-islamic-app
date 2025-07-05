@@ -12,13 +12,16 @@ const firebaseConfig = {
 };
 
 // Validate Firebase configuration
-const isValidConfig = firebaseConfig.apiKey && 
-                      firebaseConfig.authDomain && 
-                      firebaseConfig.projectId &&
-                      firebaseConfig.apiKey !== 'your_api_key_here';
+const isValidConfig =
+  firebaseConfig.apiKey &&
+  firebaseConfig.authDomain &&
+  firebaseConfig.projectId &&
+  firebaseConfig.apiKey !== 'your_api_key_here';
 
 if (!isValidConfig) {
-  console.warn('⚠️ Firebase configuration is incomplete. Please check your .env file and Firebase Console setup.');
+  console.warn(
+    '⚠️ Firebase configuration is incomplete. Please check your .env file and Firebase Console setup.'
+  );
 }
 
 let app: FirebaseApp | null = null;

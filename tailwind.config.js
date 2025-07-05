@@ -43,7 +43,7 @@ export default {
         },
       },
       fontFamily: {
-        naskh: ['Noto Naskh Arabic', 'Amiri', 'serif'],
+        naskh: ['Cairo', 'Noto Naskh Arabic', 'Amiri', 'serif'],
         sans: ['Inter', 'ui-sans-serif', 'system-ui'],
       },
       borderRadius: {

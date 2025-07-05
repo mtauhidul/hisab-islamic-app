@@ -1,4 +1,4 @@
-# 🔧 Troubleshooting Guide - Hisab Islamic App
+# 🔧 Troubleshooting Guide - HisabDaily Islamic App
 
 ## ✅ Issues Fixed
 
@@ -44,7 +44,7 @@ Go to: https://console.firebase.google.com/project/hisab-islamic-app
 2. Scroll to "Your apps" section
 3. Ensure you have a web app registered
 4. If not, click "Add app" > Web icon
-5. Register with name: "Hisab Islamic App"
+5. Register with name: "HisabDaily Islamic App"
 
 #### Step 4: Test
 After enabling authentication, refresh your browser at:

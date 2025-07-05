@@ -41,6 +41,7 @@ interface Evidence {
 interface VerificationResult {
   verdict: 'sin' | 'not_sin';
   evidence: Evidence[];
+  summary?: string;
 }
 
 export default function Dashboard() {
@@ -96,7 +97,7 @@ export default function Dashboard() {
   const handleLogoutConfirm = () => {
     setShowLogoutModal(false);
     logout();
-    toast.success('You have been signed out. Fi amanillah!');
+    toast.success(<div>You have been signed out.<br />Fī amānillāh</div>);
   };
 
   const handleLogoutCancel = () => {
@@ -156,18 +157,27 @@ export default function Dashboard() {
       <header className="sticky top-0 z-50 bg-white/90 dark:bg-zinc-900/80 backdrop-blur-xl border-b border-slate-200 dark:border-zinc-800 shadow-sm">
         <div className="max-w-md mx-auto px-3 xs:px-4 sm:px-6">
           <div className="flex items-center justify-between h-14 xs:h-16 sm:h-18">
-            <div className="flex items-center space-x-2 xs:space-x-3">
-              <div className="w-9 h-9 xs:w-10 xs:h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-slate-800 to-slate-900 dark:from-zinc-100 dark:to-zinc-200 rounded-xl flex items-center justify-center shadow-lg">
-                <span className="text-white dark:text-zinc-900 font-bold text-base xs:text-lg sm:text-xl font-naskh">
-                  ح
-                </span>
+            <div className="flex items-center space-x-3 xs:space-x-4">
+              <div className="w-10 h-10 xs:w-11 xs:h-11 sm:w-13 sm:h-13 bg-zinc-900 dark:bg-zinc-950 rounded-xl flex items-center justify-center shadow-lg border border-zinc-200 dark:border-zinc-800">
+                <div className="relative w-6 h-6 xs:w-7 xs:h-7">
+                  {/* Jannah Gate Arch (dome only, centered) */}
+                  <svg viewBox="0 0 24 24" className="w-full h-full">
+                    <path d="M12 3 
+                             C7 3, 4 8, 4 16 
+                             L4 19 
+                             L20 19 
+                             L20 16 
+                             C20 8, 17 3, 12 3Z" 
+                          fill="#22c55e"/>
+                  </svg>
+                </div>
               </div>
-              <div>
-                <h1 className="text-base xs:text-lg sm:text-xl font-semibold text-slate-800 dark:text-zinc-100 font-naskh">
-                  حساب (Hisab)
+              <div className="space-y-0.5">
+                <h1 className="text-base xs:text-lg sm:text-xl font-semibold text-slate-800 dark:text-zinc-100 font-inter">
+                  HisabDaily
                 </h1>
-                <p className="text-xs sm:text-sm text-slate-600 dark:text-zinc-400">
-                  Assalāmu ʿalaykum
+                <p className="text-xs sm:text-sm text-slate-600 dark:text-zinc-400 font-inter">
+                  Track. Regret. Repent.
                 </p>
               </div>
             </div>
@@ -395,25 +405,38 @@ export default function Dashboard() {
                         </Badge>
                       </div>
 
-                      {verificationResult.evidence && verificationResult.evidence.length > 0 && (
-                        <div className="space-y-2 xs:space-y-3">
-                          <p className="text-xs xs:text-sm sm:text-base font-medium text-slate-800 dark:text-zinc-100">
-                            Evidence:
+                      {/* Summary - Brief ruling */}
+                      {verificationResult.summary && (
+                        <div className="mb-3 xs:mb-4">
+                          <p className="text-sm xs:text-base text-slate-800 dark:text-zinc-100 leading-relaxed break-words">
+                            {verificationResult.summary}
                           </p>
-                          <div className="space-y-1 xs:space-y-2 max-h-28 xs:max-h-32 overflow-y-auto">
+                        </div>
+                      )}
+
+                      {/* Evidence - Detailed sources (collapsible) */}
+                      {verificationResult.evidence && verificationResult.evidence.length > 0 && (
+                        <details className="group">
+                          <summary className="cursor-pointer text-xs xs:text-sm font-medium text-slate-600 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-zinc-200 transition-colors flex items-center gap-1">
+                            <span>View Sources ({verificationResult.evidence.length})</span>
+                            <span className="text-xs">▼</span>
+                          </summary>
+                          <div className="mt-3 space-y-3">
                             {verificationResult.evidence.map((evidence, index) => (
                               <div
                                 key={index}
-                                className="text-xs sm:text-sm text-slate-700 dark:text-zinc-300"
+                                className="text-xs sm:text-sm text-slate-700 dark:text-zinc-300 pl-3 border-l-2 border-slate-300 dark:border-zinc-600 bg-slate-50 dark:bg-zinc-800/50 p-2 rounded-r"
                               >
-                                <span className="font-medium text-slate-800 dark:text-zinc-100">
-                                  {evidence.source}:
-                                </span>{' '}
-                                <span className="italic">"{evidence.snippet}"</span>
+                                <div className="font-medium text-slate-800 dark:text-zinc-100 mb-1">
+                                  {evidence.source}
+                                </div>
+                                <div className="italic leading-relaxed break-words">
+                                  "{evidence.snippet}"
+                                </div>
                               </div>
                             ))}
                           </div>
-                        </div>
+                        </details>
                       )}
                     </div>
                   </div>
