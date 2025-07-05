@@ -1,6 +1,6 @@
 # HisabDaily (حساب) - Islamic Daily Tracker
 
-> **🌟 Live Demo**: [https://hisabdaily.vercel.app](https://hisabdaily.vercel.app)
+> **🌟 Live **: [https://hisabdaily.com](https://hisabdaily.com)
 
 A privacy-first Islamic web application built with React, TypeScript, and Firebase for daily self-accountability and spiritual awareness.
 
