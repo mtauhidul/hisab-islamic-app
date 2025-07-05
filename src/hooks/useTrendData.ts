@@ -1,7 +1,7 @@
 import { useAuth } from '@/hooks/useAuth';
 import { db } from '@/lib/firebase';
 import { format, subDays } from 'date-fns';
-import { collection, getDocs, orderBy, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, orderBy, query, where } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 
 interface TrendData {
@@ -21,32 +21,33 @@ export const useTrendData = (period: TrendPeriod = 7) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchTrendData = async () => {
-      if (!user) {
-        setLoading(false);
-        return;
-      }
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
-      setLoading(true);
-      setError(null);
+    setLoading(true);
+    setError(null);
 
-      try {
-        const startDate = subDays(new Date(), period);
-        const startDateStr = format(startDate, 'yyyy-MM-dd');
+    if (!db) {
+      setError('Database not initialized');
+      setLoading(false);
+      return;
+    }
 
-        if (!db) {
-          setError('Database not initialized');
-          setLoading(false);
-          return;
-        }
+    const startDate = subDays(new Date(), period);
+    const startDateStr = format(startDate, 'yyyy-MM-dd');
 
-        const q = query(
-          collection(db, 'users', user.uid, 'dailyCounts'),
-          where('__name__', '>=', startDateStr),
-          orderBy('__name__')
-        );
+    const q = query(
+      collection(db, 'users', user.uid, 'dailyCounts'),
+      where('__name__', '>=', startDateStr),
+      orderBy('__name__')
+    );
 
-        const querySnapshot = await getDocs(q);
+    // Use real-time listener for automatic updates
+    const unsubscribe = onSnapshot(
+      q,
+      (querySnapshot) => {
         const trendData: TrendData[] = [];
 
         querySnapshot.forEach((doc) => {
@@ -69,15 +70,17 @@ export const useTrendData = (period: TrendPeriod = 7) => {
         }
 
         setData(filledData);
-      } catch (err) {
+        setLoading(false);
+      },
+      (err) => {
         console.error('Error fetching trend data:', err);
         setError('Failed to load trend data');
-      } finally {
         setLoading(false);
       }
-    };
+    );
 
-    fetchTrendData();
+    // Cleanup function
+    return () => unsubscribe();
   }, [user, period]);
 
   /**
