@@ -43,6 +43,25 @@ self.addEventListener('activate', (event) => {
  * Fetch event - serve from cache, fallback to network
  */
 self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+  
+  // Never cache config.js - always fetch fresh
+  if (url.pathname === '/config.js') {
+    event.respondWith(
+      fetch(event.request, {
+        cache: 'no-store'
+      }).catch(() => {
+        // If network fails, don't serve from cache for config.js
+        return new Response('// Config unavailable', {
+          status: 503,
+          headers: { 'Content-Type': 'application/javascript' }
+        });
+      })
+    );
+    return;
+  }
+  
+  // For all other requests, use cache-first strategy
   event.respondWith(
     caches.match(event.request).then((response) => {
       // Cache hit - return response
