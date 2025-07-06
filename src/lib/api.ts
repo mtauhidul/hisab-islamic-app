@@ -21,7 +21,7 @@ interface Evidence {
 }
 
 interface DeedVerificationResponse {
-  verdict: 'sin' | 'not_sin';
+  verdict: 'sin' | 'not_sin' | 'contradictory';
   evidence: Evidence[];
   summary?: string;
 }
