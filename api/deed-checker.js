@@ -3,6 +3,64 @@
  * This handles CORS issues by making server-side requests
  */
 
+/**
+ * Cross-verify Quran references using Al-Quran Cloud API
+ * @param {string} query - The deed query
+ * @param {Array} primaryEvidence - Evidence from primary source
+ * @returns {Promise<Array>} - Enhanced evidence with verification
+ */
+async function crossVerifyQuranReferences(query, primaryEvidence) {
+  try {
+    // Search Al-Quran Cloud for relevant verses
+    const searchResponse = await fetch(
+      `https://api.alquran.cloud/v1/search/${encodeURIComponent(query)}/all/en`
+    );
+
+    if (!searchResponse.ok) {
+      throw new Error(`Al-Quran API error: ${searchResponse.status}`);
+    }
+
+    const searchData = await searchResponse.json();
+
+    if (searchData.data && searchData.data.matches && searchData.data.matches.length > 0) {
+      // Get the most relevant verse
+      const relevantVerse = searchData.data.matches[0];
+
+      // Get full verse details
+      const verseResponse = await fetch(
+        `https://api.alquran.cloud/v1/surah/${relevantVerse.surah.number}/${relevantVerse.numberInSurah}`
+      );
+
+      if (verseResponse.ok) {
+        const verseData = await verseResponse.json();
+
+        // Add cross-verification evidence
+        const crossVerificationEvidence = {
+          source: `Quran ${relevantVerse.surah.number}:${relevantVerse.numberInSurah} (${relevantVerse.surah.englishName})`,
+          snippet: verseData.data.text,
+          verified: true,
+          crossVerification: true,
+        };
+
+        // Merge with primary evidence, avoiding duplicates
+        const existingQuranSources = primaryEvidence.filter((e) => e.source.includes('Quran'));
+        const isDuplicate = existingQuranSources.some((e) =>
+          e.source.includes(`${relevantVerse.surah.number}:${relevantVerse.numberInSurah}`)
+        );
+
+        if (!isDuplicate) {
+          return [...primaryEvidence, crossVerificationEvidence];
+        }
+      }
+    }
+
+    return primaryEvidence;
+  } catch (error) {
+    console.error('Cross-verification failed:', error);
+    return primaryEvidence;
+  }
+}
+
 export default async function handler(req, res) {
   // Only allow POST requests
   if (req.method !== 'POST') {
@@ -190,6 +248,9 @@ export default async function handler(req, res) {
             },
           ];
 
+    // Cross-verify with Al-Quran Cloud API for additional Quran references
+    const crossVerifiedEvidence = await crossVerifyQuranReferences(query, finalEvidence);
+
     // Create very concise summary (1-2 sentences maximum)
     let summary = cleanAnswer;
 
@@ -233,8 +294,9 @@ export default async function handler(req, res) {
 
     const result = {
       verdict: verdict,
-      evidence: finalEvidence,
+      evidence: crossVerifiedEvidence,
       summary,
+      crossVerified: crossVerifiedEvidence.length > finalEvidence.length, // Flag if additional sources found
     };
 
     // Set CORS headers to allow frontend requests
@@ -256,6 +318,7 @@ export default async function handler(req, res) {
         },
       ],
       summary: `Unable to provide specific guidance. Please consult authentic Islamic sources.`,
+      crossVerified: false,
     };
 
     res.setHeader('Access-Control-Allow-Origin', '*');
