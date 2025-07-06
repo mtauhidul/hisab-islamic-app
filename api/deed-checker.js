@@ -43,45 +43,197 @@ export default async function handler(req, res) {
       throw new Error('No response from Reminder.dev API');
     }
 
-    // Analyze the response to determine verdict
+    // Analyze the response with extremely careful verdict determination
     const answer = data.answer.toLowerCase();
-    const isPermissible =
-      (answer.includes('permissible') ||
-        answer.includes('halal') ||
-        answer.includes('allowed') ||
-        answer.includes('حلال')) &&
-      !(
-        answer.includes('not permissible') ||
-        answer.includes('haram') ||
-        answer.includes('forbidden') ||
-        answer.includes('حرام')
-      );
-
-    // Process references and format for user display
-    const formattedEvidence = (data.references || [])
-      .slice(0, 3) // Limit to top 3 references
-      .map((ref) => ({
-        source: ref.metadata?.source || 'Islamic Source',
-        snippet: ref.text || ref.metadata?.info || 'Reference text',
-      }));
-
-    // Extract clean summary from HTML answer
-    const summary = data.answer
-      .replace(/<[^>]*>/g, '') // Remove HTML tags
-      .replace(/&[^;]+;/g, '') // Remove HTML entities
+    const cleanAnswer = data.answer
+      .replace(/<[^>]*>/g, '')
+      .replace(/&[^;]+;/g, '')
       .trim();
 
+    // Default to most conservative approach
+    let verdict = 'sin';
+
+    // Only very clear and unambiguous permissibility indicators
+    const explicitlyPermissible = [
+      'is explicitly permissible',
+      'is clearly halal',
+      'is definitely allowed',
+      'allah has made it halal',
+      'is lawful and good',
+      'is mustahabb',
+    ];
+
+    // Any indication of prohibition or doubt
+    const anyDoubt = [
+      'forbidden',
+      'haram',
+      'prohibited',
+      'not allowed',
+      'not permissible',
+      'should avoid',
+      'better to avoid',
+      'discouraged',
+      'makruh',
+      'debated',
+      'scholars differ',
+      'depends on',
+      'varies',
+      'controversial',
+      'some scholars',
+      'different opinions',
+      'context matters',
+      'disputed',
+      'disagreement',
+      'some say',
+      'others believe',
+      'however',
+      'but',
+      'although',
+      'except',
+      'unless',
+      'conditions',
+      'circumstances',
+    ];
+
+    // Check for any doubt or ambiguity
+    const hasAnyDoubt = anyDoubt.some((phrase) => answer.includes(phrase));
+    const hasExplicitPermission = explicitlyPermissible.some((phrase) => answer.includes(phrase));
+
+    // Only allow 'not_sin' if explicitly clear and no doubt at all
+    if (hasExplicitPermission && !hasAnyDoubt) {
+      // Additional check: ensure the query topic matches the response
+      const queryWords = query.toLowerCase().split(' ');
+      const responseMatchesQuery = queryWords.some(
+        (word) => word.length > 3 && answer.includes(word)
+      );
+
+      if (responseMatchesQuery) {
+        verdict = 'not_sin';
+      }
+    }
+    // All other cases default to 'sin' for maximum safety
+
+    // Process references with relevance filtering and proper citation formatting
+    const queryKeywords = query
+      .toLowerCase()
+      .split(' ')
+      .filter((word) => word.length > 2);
+
+    const formattedEvidence = (data.references || [])
+      .filter((ref) => {
+        // Filter for relevance to the query
+        if (!ref.text) return false;
+        const refText = ref.text.toLowerCase();
+
+        // Check if reference is actually about the queried topic
+        const isRelevant = queryKeywords.some(
+          (keyword) =>
+            refText.includes(keyword) ||
+            (ref.metadata?.context && ref.metadata.context.toLowerCase().includes(keyword))
+        );
+
+        return isRelevant;
+      })
+      .slice(0, 2) // Limit to top 2 most relevant
+      .map((ref) => {
+        let source = 'Islamic Source';
+        let snippet = ref.text || 'Reference text';
+
+        if (ref.metadata) {
+          if (ref.metadata.source === 'quran') {
+            const chapter = ref.metadata.chapter || ref.metadata.surah || '';
+            const verse = ref.metadata.verse || ref.metadata.ayah || '';
+            if (chapter && verse) {
+              source = `Quran ${chapter}:${verse}`;
+              if (ref.metadata.name || ref.metadata.surah_name) {
+                source += ` (Surah ${ref.metadata.name || ref.metadata.surah_name})`;
+              }
+            } else {
+              source = 'Quran';
+            }
+          } else if (ref.metadata.source === 'bukhari' || ref.metadata.collection === 'bukhari') {
+            source = 'Sahih Bukhari';
+            if (ref.metadata.book_number && ref.metadata.hadith_number) {
+              source += ` Book ${ref.metadata.book_number}, Hadith ${ref.metadata.hadith_number}`;
+            } else if (ref.metadata.reference) {
+              source += ` ${ref.metadata.reference}`;
+            }
+          } else if (ref.metadata.source === 'muslim' || ref.metadata.collection === 'muslim') {
+            source = 'Sahih Muslim';
+            if (ref.metadata.book_number && ref.metadata.hadith_number) {
+              source += ` Book ${ref.metadata.book_number}, Hadith ${ref.metadata.hadith_number}`;
+            }
+          } else if (ref.metadata.source) {
+            source = ref.metadata.source.charAt(0).toUpperCase() + ref.metadata.source.slice(1);
+            if (ref.metadata.reference || ref.metadata.citation) {
+              source += ` ${ref.metadata.reference || ref.metadata.citation}`;
+            }
+          }
+        }
+
+        // Ensure snippet is meaningful and concise
+        if (snippet.length > 180) {
+          snippet = snippet.substring(0, 177) + '...';
+        }
+
+        return { source, snippet };
+      });
+
+    // If no relevant references found, provide guidance instead of irrelevant ones
+    const finalEvidence =
+      formattedEvidence.length > 0
+        ? formattedEvidence
+        : [
+            {
+              source: 'Islamic Guidance',
+              snippet: `The ruling on "${query}" requires careful consideration of Islamic sources. Please consult with a qualified Islamic scholar for specific guidance.`,
+            },
+          ];
+
+    // Create very concise summary (1-2 sentences maximum)
+    let summary = cleanAnswer;
+
+    // Extract the most direct statement about the ruling
+    const sentences = cleanAnswer.split(/[.!?]+/).filter((s) => s.trim().length > 5);
+    if (sentences.length > 0) {
+      // Look for the sentence that contains the core ruling
+      let coreSentence = sentences[0].trim();
+
+      // Prioritize sentences with clear verdict terms
+      for (const sentence of sentences.slice(0, 4)) {
+        const s = sentence.trim().toLowerCase();
+        if (
+          s.includes('permissible') ||
+          s.includes('forbidden') ||
+          s.includes('haram') ||
+          s.includes('halal') ||
+          s.includes('allowed') ||
+          s.includes('prohibited')
+        ) {
+          coreSentence = sentence.trim();
+          break;
+        }
+      }
+
+      summary = coreSentence;
+
+      // If verdict is uncertain, add clarification
+      if (
+        verdict === 'sin' &&
+        (summary.includes('debated') || summary.includes('scholars differ'))
+      ) {
+        summary += ' Due to scholarly disagreement, it is safer to avoid this practice.';
+      }
+    }
+
+    // Ensure summary is very concise (max 120 characters for mobile UX)
+    if (summary.length > 120) {
+      summary = summary.substring(0, 117) + '...';
+    }
+
     const result = {
-      verdict: isPermissible ? 'not_sin' : 'sin',
-      evidence:
-        formattedEvidence.length > 0
-          ? formattedEvidence
-          : [
-              {
-                source: 'Islamic Analysis',
-                snippet: summary,
-              },
-            ],
+      verdict: verdict,
+      evidence: finalEvidence,
       summary,
     };
 
