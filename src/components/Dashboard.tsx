@@ -81,7 +81,16 @@ export default function Dashboard() {
       const result = await verifyDeed(deedText, 'en');
       setVerificationResult(result);
       setDeedText('');
-      toast.success('Deed verified successfully');
+
+      // Check if the result indicates a service error
+      if (
+        result.evidence?.[0]?.source === 'Service Notice' ||
+        result.evidence?.[0]?.source === 'API Services Unavailable'
+      ) {
+        toast.warning('Service unavailable - showing offline response');
+      } else {
+        toast.success('Deed verified successfully');
+      }
     } catch {
       toast.error('Failed to verify deed. Please try again.');
     } finally {
@@ -97,7 +106,13 @@ export default function Dashboard() {
   const handleLogoutConfirm = () => {
     setShowLogoutModal(false);
     logout();
-    toast.success(<div>You have been signed out.<br />Fī amānillāh</div>);
+    toast.success(
+      <div>
+        You have been signed out.
+        <br />
+        Fī amānillāh
+      </div>
+    );
   };
 
   const handleLogoutCancel = () => {
@@ -162,13 +177,15 @@ export default function Dashboard() {
                 <div className="relative w-6 h-6 xs:w-7 xs:h-7">
                   {/* Jannah Gate Arch (dome only, centered) */}
                   <svg viewBox="0 0 24 24" className="w-full h-full">
-                    <path d="M12 3 
+                    <path
+                      d="M12 3 
                              C7 3, 4 8, 4 16 
                              L4 19 
                              L20 19 
                              L20 16 
-                             C20 8, 17 3, 12 3Z" 
-                          fill="#22c55e"/>
+                             C20 8, 17 3, 12 3Z"
+                      fill="#22c55e"
+                    />
                   </svg>
                 </div>
               </div>

@@ -31,7 +31,57 @@
     <title>HisabDaily - Track. Regret. Repent.</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Fallback loading indicator -->
+      <div id="initial-loader" style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      ">
+        <div style="text-align: center;">
+          <div style="
+            width: 24px;
+            height: 24px;
+            border: 2px solid #e5e7eb;
+            border-top: 2px solid #3b82f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+          "></div>
+          <p style="
+            color: #6b7280;
+            font-size: 14px;
+            margin: 0;
+          ">Loading HisabDaily...</p>
+        </div>
+      </div>
+      <style>
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        @media (prefers-color-scheme: dark) {
+          #initial-loader {
+            background: #0f172a !important;
+          }
+          #initial-loader p {
+            color: #94a3b8 !important;
+          }
+          #initial-loader div div {
+            border-color: #374151 !important;
+            border-top-color: #60a5fa !important;
+          }
+        }
+      </style>
+    </div>
 
     <!-- Load runtime configuration synchronously before the main app -->
     <script>
@@ -65,16 +115,9 @@
           configUrl += '&domain=custom&device=' + (isMobile ? 'mobile' : 'desktop') + '&t=' + performance.now();
         }
         
-        console.log('🔄 Loading config.js:', {
-          domain: window.location.hostname,
-          isCustomDomain: isCustomDomain,
-          isMobile: isMobile,
-          isDesktop: isDesktop,
-          userAgent: userAgent.substring(0, 50) + '...',
-          cacheBuster: cacheBuster
-        });
+        // Loading config.js
         
-        var maxRetries = (isCustomDomain && isDesktop) ? 5 : (isCustomDomain ? 3 : 1);
+        var maxRetries = (isCustomDomain && isDesktop) ? 2 : (isCustomDomain ? 1 : 0);
         var retryCount = 0;
         
         function loadConfig() {
@@ -99,26 +142,18 @@
             if (xhr.status === 200) {
               // Execute the config script content
               new Function(xhr.responseText)();
-              console.log('✅ Runtime config loaded successfully');
               
               // Verify config was loaded
               if (window.__FIREBASE_CONFIG__ && window.__FIREBASE_CONFIG__.VITE_FIREBASE_API_KEY) {
-                console.log('✅ Firebase config verified:', {
-                  apiKey: window.__FIREBASE_CONFIG__.VITE_FIREBASE_API_KEY ? 'Set' : 'Missing',
-                  projectId: window.__FIREBASE_CONFIG__.VITE_FIREBASE_PROJECT_ID || 'Missing',
-                  domain: window.location.hostname
-                });
                 return true;
               } else {
-                console.warn('⚠️ Firebase config not properly loaded from runtime config');
                 return false;
               }
             } else {
-              console.warn('⚠️ Failed to load config.js, status:', xhr.status);
               return false;
             }
           } catch (error) {
-            console.warn('⚠️ Failed to load config.js synchronously:', error);
+            // Failed to load config.js synchronously
             return false;
           }
         }
@@ -128,7 +163,7 @@
         
         while (!success && retryCount < maxRetries && isCustomDomain) {
           retryCount++;
-          console.log('🔄 Retrying config load (attempt ' + (retryCount + 1) + ')...');
+          // Retrying config load
           
           // Update cache buster for retry
           cacheBuster = Date.now() + '-' + Math.random().toString(36).substr(2, 9) + '-retry' + retryCount;
@@ -139,7 +174,7 @@
         
         // Fallback to dynamic loading if all retries failed
         if (!success) {
-          console.warn('⚠️ All config loading attempts failed, using dynamic fallback');
+          // Using fallback loading
           var script = document.createElement('script');
           script.src = '/config.js?fallback=' + Date.now();
           script.async = false;
@@ -150,6 +185,21 @@
       })();
     </script>
     <script type="module" src="/src/main.tsx"></script>
+
+    <!-- Hide initial loader once React app starts -->
+    <script>
+      // Hide the loader after a short delay to ensure React has started
+      setTimeout(function() {
+        var loader = document.getElementById('initial-loader');
+        if (loader) {
+          loader.style.opacity = '0';
+          loader.style.transition = 'opacity 0.3s ease-out';
+          setTimeout(function() {
+            loader.style.display = 'none';
+          }, 300);
+        }
+      }, 1000);
+    </script>
 
     <!-- Service Worker Registration with cache management -->
     <script>
@@ -163,14 +213,14 @@
           navigator.serviceWorker
             .register('/sw.js')
             .then((registration) => {
-              console.log('SW registered: ', registration);
+              // SW registered successfully
               
               // Clear SW cache for desktop custom domain to prevent config.js caching issues
               if (isDesktop && isCustomDomain && 'caches' in window) {
                 caches.keys().then(cacheNames => {
                   cacheNames.forEach(cacheName => {
                     if (cacheName.includes('config') || cacheName.includes('static')) {
-                      console.log('🧹 Clearing SW cache for desktop:', cacheName);
+                      // Clearing SW cache for desktop
                       caches.delete(cacheName);
                     }
                   });
@@ -178,7 +228,7 @@
               }
             })
             .catch((registrationError) => {
-              console.log('SW registration failed: ', registrationError);
+              // SW registration failed
             });
         });
       }

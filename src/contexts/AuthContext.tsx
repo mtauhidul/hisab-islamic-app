@@ -33,46 +33,78 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
     let isMounted = true;
+    let timeoutId: NodeJS.Timeout;
+    const startTime = Date.now();
+    const MIN_LOADING_TIME = 500; // Minimum loading time to prevent flash
 
     const setupAuth = async () => {
       try {
-        console.log('🔄 AuthProvider: Starting Firebase Auth setup...');
-        
+        // Set a safety timeout to prevent infinite loading
+        timeoutId = setTimeout(() => {
+          if (isMounted) {
+            setError('Authentication initialization timed out. Please refresh the page.');
+            setLoading(false);
+          }
+        }, 10000); // 10 second timeout
+
         // Initialize Firebase and get auth instance
         const auth = await getFirebaseAuth();
-        
+
+        // Clear timeout if initialization succeeds
+        if (timeoutId) clearTimeout(timeoutId);
+
         // If component was unmounted during async operation, don't proceed
         if (!isMounted) return;
-        
-        console.log('✅ AuthProvider: Firebase Auth initialized, setting up listener...');
-        
+
         // Set up auth state listener with proper error handling
         unsubscribe = onAuthStateChanged(
           auth,
           (user) => {
             if (!isMounted) return;
-            
-            console.log('🔔 AuthProvider: Auth state resolved:', user ? `User: ${user.email}` : 'No user');
-            setUser(user);
-            setLoading(false);
-            setError(null);
+
+            // Ensure minimum loading time to prevent flash
+            const elapsedTime = Date.now() - startTime;
+            const remainingTime = Math.max(0, MIN_LOADING_TIME - elapsedTime);
+
+            setTimeout(() => {
+              if (isMounted) {
+                setUser(user);
+                setLoading(false);
+                setError(null);
+              }
+            }, remainingTime);
           },
           (authError) => {
             if (!isMounted) return;
             console.error('❌ AuthProvider: Auth state listener error:', authError);
-            setError(`Authentication error: ${authError.message}`);
-            setLoading(false);
+
+            // Ensure minimum loading time even for errors
+            const elapsedTime = Date.now() - startTime;
+            const remainingTime = Math.max(0, MIN_LOADING_TIME - elapsedTime);
+
+            setTimeout(() => {
+              if (isMounted) {
+                setError(`Authentication error: ${authError.message}`);
+                setLoading(false);
+              }
+            }, remainingTime);
           }
         );
-        
-        console.log('✅ AuthProvider: Auth state listener active');
-        
       } catch (initError: unknown) {
         if (!isMounted) return;
         const errorMessage = initError instanceof Error ? initError.message : 'Unknown error';
         console.error('❌ AuthProvider: Firebase Auth initialization failed:', initError);
-        setError(`Failed to initialize authentication: ${errorMessage}`);
-        setLoading(false);
+
+        // Ensure minimum loading time even for errors
+        const elapsedTime = Date.now() - startTime;
+        const remainingTime = Math.max(0, MIN_LOADING_TIME - elapsedTime);
+
+        setTimeout(() => {
+          if (isMounted) {
+            setError(`Failed to initialize authentication: ${errorMessage}`);
+            setLoading(false);
+          }
+        }, remainingTime);
       }
     };
 
@@ -80,8 +112,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     return () => {
       isMounted = false;
+      if (timeoutId) clearTimeout(timeoutId);
       if (unsubscribe) {
-        console.log('🧹 AuthProvider: Cleaning up auth listener');
         unsubscribe();
       }
     };

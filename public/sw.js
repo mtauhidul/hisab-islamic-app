@@ -4,7 +4,7 @@ const urlsToCache = [
   '/manifest.json',
   '/favicon.svg',
   '/icon-192x192.svg',
-  '/icon-512x512.svg'
+  '/icon-512x512.svg',
 ];
 
 /**
@@ -44,23 +44,23 @@ self.addEventListener('activate', (event) => {
  */
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
-  
+
   // Never cache config.js - always fetch fresh
   if (url.pathname === '/config.js') {
     event.respondWith(
       fetch(event.request, {
-        cache: 'no-store'
+        cache: 'no-store',
       }).catch(() => {
         // If network fails, don't serve from cache for config.js
         return new Response('// Config unavailable', {
           status: 503,
-          headers: { 'Content-Type': 'application/javascript' }
+          headers: { 'Content-Type': 'application/javascript' },
         });
       })
     );
     return;
   }
-  
+
   // For all other requests, use cache-first strategy
   event.respondWith(
     caches.match(event.request).then((response) => {
@@ -109,8 +109,7 @@ async function syncCounterData() {
   try {
     // This would need to be implemented with the Firebase SDK
     // For now, we'll rely on the app-level sync
-    console.log('Syncing counter data...');
   } catch (error) {
-    console.error('Failed to sync counter data:', error);
+    // Silent error handling in production
   }
 }

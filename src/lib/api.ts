@@ -50,14 +50,14 @@ export const verifyDeed = async (
   if (!apiKey || apiKey === 'your_fanar_api_key_here') {
     // Use Reminder.dev API as primary option when Fanar is not configured
     try {
-      console.info('🔄 Using Reminder.dev API for Islamic deed verification (primary)');
+      // Using Reminder.dev API for Islamic deed verification (primary)
       const { verifyDeedWithReminderDev } = await import('./reminderDev');
       return await verifyDeedWithReminderDev(query, language);
-    } catch (error) {
-      console.warn('Reminder.dev API failed:', error);
+    } catch {
+      // Reminder.dev API failed
 
       // Return a helpful mock response for development
-      console.warn('⚠️ All APIs unavailable. Using mock response for development.');
+      // All APIs unavailable - using mock response
 
       return {
         verdict: 'sin',

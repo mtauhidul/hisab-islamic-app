@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-console.log('🔄 Generating runtime config.js...');
+// Generating runtime config.js...
 
 const distPath = path.join(__dirname, '..', 'dist');
 const configPath = path.join(distPath, 'config.js');
@@ -46,34 +46,11 @@ const configContent = `// Runtime configuration for production
     // Mark the config as loaded with timestamp
     window.__FIREBASE_CONFIG_LOADED__ = ${buildTimestamp};
     window.__FIREBASE_BUILD_ID__ = "${buildId}";
-
-    // Debug logging
-    var isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    var logPrefix = isDev ? '🔧' : '🔧';
-    var envType = isDev ? 'development' : 'production';
-    
-    console.log(logPrefix + ' Firebase config loaded (' + envType + '):', {
-      timestamp: ${buildTimestamp},
-      buildId: "${buildId}",
-      apiKey: window.__FIREBASE_CONFIG__.VITE_FIREBASE_API_KEY ? 'Set' : 'Missing',
-      projectId: window.__FIREBASE_CONFIG__.VITE_FIREBASE_PROJECT_ID || 'Missing'
-    });
   }
 })();`;
 
 // Write the config file
 fs.writeFileSync(configPath, configContent);
 
-console.log('✅ Runtime config.js generated successfully');
-console.log('📦 Build info:', {
-  timestamp: buildTimestamp,
-  buildId: buildId,
-  date: new Date().toISOString()
-});
-
-// Log which variables were set (without revealing values)
-Object.entries(envVars).forEach(([key, value]) => {
-  console.log(`  - ${key}: ${value ? 'Set' : 'Missing'}`);
-});
-
-console.log('🚀 Build completed successfully!');
+// Runtime config.js generated successfully
+// Build completed successfully!

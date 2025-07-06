@@ -4,7 +4,15 @@ import { getFirestore, type Firestore } from 'firebase/firestore';
 
 // Helper function to get environment variables with multiple fallbacks
 const getEnvVar = (key: string): string => {
-  // 1. Try runtime config first (from config.js)
+  // In development, prefer direct environment variables
+  if (import.meta.env.DEV) {
+    const envValue = import.meta.env[key];
+    if (envValue && envValue !== '') {
+      return envValue;
+    }
+  }
+
+  // 1. Try runtime config first (from config.js) for production
   if (typeof window !== 'undefined') {
     const runtimeConfig = (window as { __FIREBASE_CONFIG__?: Record<string, string> })
       .__FIREBASE_CONFIG__;
@@ -13,7 +21,7 @@ const getEnvVar = (key: string): string => {
     }
   }
 
-  // 2. Fallback to Vite's import.meta.env (for local development)
+  // 2. Fallback to Vite's import.meta.env
   const envValue = import.meta.env[key];
   if (envValue && envValue !== '') {
     return envValue;
@@ -42,33 +50,34 @@ let initializationPromise: Promise<{ auth: Auth; db: Firestore }> | null = null;
  */
 const waitForRuntimeConfig = (): Promise<void> => {
   return new Promise((resolve) => {
+    // In development, skip config loading and use env vars directly
+    if (import.meta.env.DEV) {
+      resolve();
+      return;
+    }
+
     if (typeof window === 'undefined') {
       resolve();
       return;
     }
 
     let attempts = 0;
-    const maxAttempts = 100; // Maximum 5 seconds (100 * 50ms)
+    const maxAttempts = 40; // Maximum 2 seconds (40 * 50ms)
 
     const checkConfig = () => {
       attempts++;
-      
+
       const runtimeConfig = (window as { __FIREBASE_CONFIG__?: Record<string, string> })
         .__FIREBASE_CONFIG__;
-      
+
       if (runtimeConfig && runtimeConfig.VITE_FIREBASE_API_KEY) {
-        console.log('✅ Runtime config found:', { 
-          apiKey: runtimeConfig.VITE_FIREBASE_API_KEY ? 'Set' : 'Missing',
-          projectId: runtimeConfig.VITE_FIREBASE_PROJECT_ID || 'Missing',
-          attempts
-        });
+        // Runtime config found
         resolve();
         return;
       }
 
       // If we've reached max attempts, resolve anyway and fallback to env vars
       if (attempts >= maxAttempts) {
-        console.log('⏳ Max attempts reached, falling back to env variables');
         resolve();
         return;
       }
@@ -76,8 +85,8 @@ const waitForRuntimeConfig = (): Promise<void> => {
       // Check if we're in development mode
       if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
         // In development, don't wait too long - use env vars after short delay
-        if (attempts >= 10) { // 500ms max wait in development
-          console.log('ℹ️ Development mode: Using Vite env variables');
+        if (attempts >= 6) {
+          // 300ms max wait in development
           resolve();
           return;
         }
@@ -101,8 +110,6 @@ const initializeFirebase = async (): Promise<{ auth: Auth; db: Firestore }> => {
 
   initializationPromise = (async () => {
     try {
-      console.log('🔄 Starting Firebase initialization...');
-      
       // Wait for runtime config in production
       await waitForRuntimeConfig();
 
@@ -116,27 +123,22 @@ const initializeFirebase = async (): Promise<{ auth: Auth; db: Firestore }> => {
         appId: getEnvVar('VITE_FIREBASE_APP_ID'),
       };
 
-      console.log('🔧 Firebase config loaded:', {
-        apiKey: firebaseConfig.apiKey ? `${firebaseConfig.apiKey.substring(0, 10)}...` : 'Missing',
-        authDomain: firebaseConfig.authDomain || 'Missing',
-        projectId: firebaseConfig.projectId || 'Missing',
-      });
-
       if (!isValidConfig(firebaseConfig)) {
         const missingKeys = Object.entries(firebaseConfig)
           .filter(([, value]) => !value || value === '')
           .map(([key]) => key);
-        
+
         console.error('❌ Firebase configuration is invalid. Missing:', missingKeys);
-        
+
         // In production, try to reload config.js once if it's missing
-        if (typeof window !== 'undefined' && 
-            window.location.hostname !== 'localhost' && 
-            window.location.hostname !== '127.0.0.1' &&
-            missingKeys.length > 0) {
-          
-          console.log('🔄 Attempting to reload config.js...');
-          
+        if (
+          typeof window !== 'undefined' &&
+          window.location.hostname !== 'localhost' &&
+          window.location.hostname !== '127.0.0.1' &&
+          missingKeys.length > 0
+        ) {
+          // Attempting to reload config.js
+
           try {
             const xhr = new XMLHttpRequest();
             const cacheBuster = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
@@ -144,11 +146,11 @@ const initializeFirebase = async (): Promise<{ auth: Auth; db: Firestore }> => {
             xhr.setRequestHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
             xhr.setRequestHeader('Pragma', 'no-cache');
             xhr.send();
-            
+
             if (xhr.status === 200) {
               new Function(xhr.responseText)();
-              console.log('✅ Config.js reloaded successfully');
-              
+              // Config.js reloaded successfully
+
               // Retry with new config
               const retryConfig = {
                 apiKey: getEnvVar('VITE_FIREBASE_API_KEY'),
@@ -158,17 +160,17 @@ const initializeFirebase = async (): Promise<{ auth: Auth; db: Firestore }> => {
                 messagingSenderId: getEnvVar('VITE_FIREBASE_MESSAGING_SENDER_ID'),
                 appId: getEnvVar('VITE_FIREBASE_APP_ID'),
               };
-              
+
               if (isValidConfig(retryConfig)) {
                 firebaseConfig = retryConfig;
-                console.log('✅ Firebase config updated after reload');
+                // Firebase config updated after reload
               }
             }
-          } catch (reloadError) {
-            console.warn('⚠️ Failed to reload config.js:', reloadError);
+          } catch {
+            // Failed to reload config.js - continuing with fallback
           }
         }
-        
+
         if (!isValidConfig(firebaseConfig)) {
           throw new Error(`Firebase configuration is invalid. Missing: ${missingKeys.join(', ')}`);
         }
@@ -177,42 +179,41 @@ const initializeFirebase = async (): Promise<{ auth: Auth; db: Firestore }> => {
       // Initialize Firebase app if not already initialized
       if (!app) {
         app = initializeApp(firebaseConfig);
-        console.log('✅ Firebase app initialized');
+        // Firebase app initialized
       }
 
       // Initialize Auth with persistence if not already initialized
       if (!auth) {
         auth = getAuth(app);
-        
+
         try {
           // Set persistence to LOCAL (survives browser restarts)
           await setPersistence(auth, browserLocalPersistence);
-          console.log('✅ Firebase Auth persistence set to LOCAL');
-        } catch (persistenceError) {
+          // Firebase Auth persistence set to LOCAL
+        } catch {
           // If setting persistence fails, continue anyway (might already be set)
-          console.warn('⚠️ Firebase Auth persistence already set or failed:', persistenceError);
         }
-        
-        console.log('✅ Firebase Auth initialized');
+
+        // Firebase Auth initialized
       }
 
       // Initialize Firestore if not already initialized
       if (!db) {
         db = getFirestore(app);
-        console.log('✅ Firebase Firestore initialized');
+        // Firebase Firestore initialized
       }
 
-      console.log('🎉 Firebase fully initialized');
+      // Firebase fully initialized
       return { auth, db };
     } catch (error) {
       console.error('❌ Firebase initialization failed:', error);
-      
+
       // Reset state so we can try again
       app = null;
       auth = null;
       db = null;
       initializationPromise = null;
-      
+
       throw error;
     }
   })();
