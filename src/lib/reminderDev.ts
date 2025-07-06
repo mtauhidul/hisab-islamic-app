@@ -35,6 +35,12 @@ interface ReminderDevSearchResponse {
   }>;
 }
 
+interface ProxyApiResponse {
+  verdict: 'sin' | 'not_sin';
+  evidence: Evidence[];
+  summary: string;
+}
+
 /**
  * Verify if a deed is considered a sin using Reminder.dev API
  *
@@ -46,14 +52,6 @@ export const verifyDeedWithReminderDev = async (
   query: string,
   language: string = 'en'
 ): Promise<DeedVerificationResponse> => {
-  const apiUrl = 'https://reminder.dev/api/search';
-
-  // Construct the question for Islamic deed verification
-  const question =
-    language === 'ar'
-      ? `هل ${query} حلال أم حرام في الإسلام؟ يرجى تقديم أدلة من القرآن والسنة.`
-      : `Is ${query} permissible (halal) or forbidden (haram) in Islam? Please provide evidence from Quran and Hadith.`;
-
   // Check offline knowledge base first for better performance
   const offlineResult = searchOfflineKnowledge(query);
   if (offlineResult) {
@@ -63,30 +61,63 @@ export const verifyDeedWithReminderDev = async (
     };
   }
 
+  // Use proxy API in production to handle CORS, direct API in development
+  const isDevelopment = typeof window !== 'undefined' && window.location.hostname === 'localhost';
+  const apiUrl = isDevelopment ? 'https://reminder.dev/api/search' : '/api/deed-checker';
+
   // If not found in offline knowledge base, try API as fallback
   try {
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        q: question,
-      }),
-    });
+    let response;
 
-    if (!response.ok) {
-      throw new Error(`Reminder.dev API error: ${response.status}`);
+    if (isDevelopment) {
+      // Direct API call for development
+      const question =
+        language === 'ar'
+          ? `هل ${query} حلال أم حرام في الإسلام؟ يرجى تقديم أدلة من القرآن والسنة.`
+          : `Is ${query} permissible (halal) or forbidden (haram) in Islam? Please provide evidence from Quran and Hadith.`;
+
+      response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          q: question,
+        }),
+      });
+    } else {
+      // Use proxy API for production
+      response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query,
+          language,
+        }),
+      });
     }
 
-    const data: ReminderDevSearchResponse = await response.json();
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
 
-    if (!data.answer) {
-      throw new Error('No response from Reminder.dev API');
+    const data: ReminderDevSearchResponse | ProxyApiResponse = await response.json();
+
+    // Handle production proxy response (already processed)
+    if (!isDevelopment && 'verdict' in data && 'evidence' in data) {
+      return data as ProxyApiResponse;
+    }
+
+    // Handle development direct API response
+    const reminderData = data as ReminderDevSearchResponse;
+    if (!reminderData.answer) {
+      throw new Error('No response from API');
     }
 
     // Analyze the response to determine verdict
-    const answer = data.answer.toLowerCase();
+    const answer = reminderData.answer.toLowerCase();
     const isPermissible =
       (answer.includes('permissible') ||
         answer.includes('halal') ||
@@ -100,8 +131,8 @@ export const verifyDeedWithReminderDev = async (
       );
 
     // Process references and format for user display
-    const formattedEvidence = formatReminderDevEvidence(data.references || []);
-    const summary = summarizeReminderDevResponse(data.answer);
+    const formattedEvidence = formatReminderDevEvidence(reminderData.references || []);
+    const summary = summarizeReminderDevResponse(reminderData.answer);
 
     // If no formatted evidence from references, use the answer itself but summarized
     const finalEvidence =
@@ -120,7 +151,7 @@ export const verifyDeedWithReminderDev = async (
       summary,
     };
   } catch (error) {
-    console.error('Error verifying deed with Reminder.dev API:', error);
+    console.error('Error verifying deed with API:', error);
 
     // Return a general response for unknown deeds
     return {
