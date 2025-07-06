@@ -19,7 +19,7 @@ interface Evidence {
 }
 
 interface DeedVerificationResponse {
-  verdict: 'sin' | 'not_sin';
+  verdict: 'sin' | 'not_sin' | 'contradictory';
   evidence: Evidence[];
   summary?: string;
 }
@@ -36,7 +36,7 @@ interface ReminderDevSearchResponse {
 }
 
 interface ProxyApiResponse {
-  verdict: 'sin' | 'not_sin';
+  verdict: 'sin' | 'not_sin' | 'contradictory';
   evidence: Evidence[];
   summary: string;
 }
@@ -52,14 +52,7 @@ export const verifyDeedWithReminderDev = async (
   query: string,
   language: string = 'en'
 ): Promise<DeedVerificationResponse> => {
-  // Check offline knowledge base first for better performance
-  const offlineResult = searchOfflineKnowledge(query);
-  if (offlineResult) {
-    return {
-      ...offlineResult,
-      summary: `${offlineResult.summary}`,
-    };
-  }
+  // Always use API for fresh, accurate results - no offline fallback
 
   // Use proxy API in production to handle CORS, direct API in development
   const isDevelopment = typeof window !== 'undefined' && window.location.hostname === 'localhost';
@@ -116,33 +109,40 @@ export const verifyDeedWithReminderDev = async (
       throw new Error('No response from API');
     }
 
-    // Analyze the response with extremely careful verdict determination
+    // Analyze the response with smarter verdict determination
     const answer = reminderData.answer.toLowerCase();
 
-    // Default to most conservative approach
-    let verdict: 'sin' | 'not_sin' = 'sin';
+    // Start with conservative default
+    let verdict: 'sin' | 'not_sin' | 'contradictory' = 'sin';
 
-    // Only very clear and unambiguous permissibility indicators
-    const explicitlyPermissible = [
-      'is explicitly permissible',
-      'is clearly halal',
-      'is definitely allowed',
-      'allah has made it halal',
-      'is lawful and good',
+    // Clear permissibility indicators
+    const clearlyPermissible = [
+      'is permissible',
+      'is halal',
+      'is allowed',
+      'is encouraged',
+      'is recommended',
       'is mustahabb',
+      'is mandated',
+      'is obligatory',
+      'allah encourages',
+      'allah commands',
+      'highly encouraged',
     ];
 
-    // Any indication of prohibition or doubt
-    const anyDoubt = [
-      'forbidden',
-      'haram',
-      'prohibited',
+    // Clear prohibition indicators
+    const clearlyForbidden = [
+      'is forbidden',
+      'is haram',
+      'is prohibited',
       'not allowed',
-      'not permissible',
-      'should avoid',
-      'better to avoid',
-      'discouraged',
-      'makruh',
+      'must not',
+      'allah forbids',
+      'strictly forbidden',
+    ];
+
+    // Uncertainty/debate indicators
+    const uncertaintyIndicators = [
       'debated',
       'scholars differ',
       'depends on',
@@ -153,24 +153,21 @@ export const verifyDeedWithReminderDev = async (
       'context matters',
       'disputed',
       'disagreement',
-      'some say',
-      'others believe',
-      'however',
-      'but',
-      'although',
-      'except',
-      'unless',
-      'conditions',
-      'circumstances',
+      'conditions apply',
     ];
 
-    // Check for any doubt or ambiguity
-    const hasAnyDoubt = anyDoubt.some((phrase) => answer.includes(phrase));
-    const hasExplicitPermission = explicitlyPermissible.some((phrase) => answer.includes(phrase));
+    // Count evidence strength
+    const permissibleCount = clearlyPermissible.filter((phrase) => answer.includes(phrase)).length;
+    const forbiddenCount = clearlyForbidden.filter((phrase) => answer.includes(phrase)).length;
+    const uncertaintyCount = uncertaintyIndicators.filter((phrase) =>
+      answer.includes(phrase)
+    ).length;
 
-    // Only allow 'not_sin' if explicitly clear and no doubt at all
-    if (hasExplicitPermission && !hasAnyDoubt) {
-      // Additional check: ensure the query topic matches the response
+    // Smart verdict determination
+    if (uncertaintyCount > 0) {
+      verdict = 'contradictory'; // New verdict type for debated matters
+    } else if (permissibleCount > forbiddenCount && permissibleCount > 0) {
+      // Ensure the response is actually about the query topic
       const queryWords = query.toLowerCase().split(' ');
       const responseMatchesQuery = queryWords.some(
         (word) => word.length > 3 && answer.includes(word)
@@ -179,8 +176,10 @@ export const verifyDeedWithReminderDev = async (
       if (responseMatchesQuery) {
         verdict = 'not_sin';
       }
+    } else if (forbiddenCount > 0) {
+      verdict = 'sin';
     }
-    // All other cases default to 'sin' for maximum safety
+    // Default remains 'sin' for unclear cases
 
     // Process references with relevance filtering and format for user display
     const queryKeywords = query
@@ -271,7 +270,10 @@ export const verifyDeedHybrid = async (
 /**
  * Create very concise summary from API response (1-2 sentences maximum)
  */
-function summarizeReminderDevResponse(htmlAnswer: string, verdict?: 'sin' | 'not_sin'): string {
+function summarizeReminderDevResponse(
+  htmlAnswer: string,
+  verdict?: 'sin' | 'not_sin' | 'contradictory'
+): string {
   // Remove HTML tags and get clean text
   const cleanText = htmlAnswer
     .replace(/<[^>]*>/g, '')
@@ -436,308 +438,5 @@ function formatReminderDevEvidence(
  * Simple offline knowledge base for common Islamic deeds
  * Used as fallback when APIs are unavailable
  */
-const offlineKnowledgeBase: Record<string, DeedVerificationResponse> = {
-  // Forbidden acts
-  'drinking alcohol': {
-    verdict: 'sin',
-    evidence: [
-      {
-        source: 'Quran 5:90',
-        snippet:
-          "O you who believe! Intoxicants, gambling, stone alters and divining arrows are an abomination of Satan's handiwork. So avoid them so that you may be successful.",
-      },
-    ],
-    summary: 'Consuming alcohol is clearly forbidden in Islam.',
-  },
-  alcohol: {
-    verdict: 'sin',
-    evidence: [
-      {
-        source: 'Quran 5:90',
-        snippet:
-          "O you who believe! Intoxicants, gambling, stone alters and divining arrows are an abomination of Satan's handiwork. So avoid them so that you may be successful.",
-      },
-    ],
-    summary: 'Consuming alcohol is clearly forbidden in Islam.',
-  },
-  gambling: {
-    verdict: 'sin',
-    evidence: [
-      {
-        source: 'Quran 2:219',
-        snippet:
-          'They ask you about wine and gambling. Say: "In them is great sin and some benefit for men, but the sin is greater than the benefit."',
-      },
-    ],
-    summary: 'Gambling is prohibited in Islam as it leads to addiction and social harm.',
-  },
-  'eating pork': {
-    verdict: 'sin',
-    evidence: [
-      {
-        source: 'Quran 2:173',
-        snippet:
-          'He has forbidden you only dead animals, blood, the flesh of swine, and that which has been dedicated to other than Allah.',
-      },
-    ],
-    summary: 'Consuming pork is explicitly forbidden in Islam.',
-  },
-  pork: {
-    verdict: 'sin',
-    evidence: [
-      {
-        source: 'Quran 2:173',
-        snippet:
-          'He has forbidden you only dead animals, blood, the flesh of swine, and that which has been dedicated to other than Allah.',
-      },
-    ],
-    summary: 'Consuming pork is explicitly forbidden in Islam.',
-  },
-  stealing: {
-    verdict: 'sin',
-    evidence: [
-      {
-        source: 'Quran 5:38',
-        snippet:
-          'As for the thief, both male and female, cut off their hands. It is the reward of their own deeds, an exemplary punishment from Allah.',
-      },
-    ],
-    summary: 'Theft is a major sin in Islam with severe prescribed punishment.',
-  },
-  lying: {
-    verdict: 'sin',
-    evidence: [
-      {
-        source: 'Hadith - Bukhari',
-        snippet:
-          'The Prophet (peace be upon him) said: "Truthfulness leads to righteousness, and righteousness leads to Paradise. And lying leads to Al-Fajur (i.e. wickedness, evil-doing), and Al-Fajur leads to the (Hell) Fire."',
-      },
-    ],
-    summary: 'Lying is condemned in Islam and leads one away from righteousness.',
-  },
-  adultery: {
-    verdict: 'sin',
-    evidence: [
-      {
-        source: 'Quran 17:32',
-        snippet:
-          'And do not approach unlawful sexual intercourse. Indeed, it is ever an immorality and is evil as a way.',
-      },
-    ],
-    summary: 'Adultery is a major sin in Islam and is strictly forbidden.',
-  },
-  interest: {
-    verdict: 'sin',
-    evidence: [
-      {
-        source: 'Quran 2:275',
-        snippet:
-          'Those who consume interest cannot stand except as one stands who is being beaten by Satan into insanity.',
-      },
-    ],
-    summary: 'Dealing in interest (riba) is forbidden in Islam.',
-  },
-  riba: {
-    verdict: 'sin',
-    evidence: [
-      {
-        source: 'Quran 2:275',
-        snippet:
-          'Those who consume interest cannot stand except as one stands who is being beaten by Satan into insanity.',
-      },
-    ],
-    summary: 'Riba (interest/usury) is strictly prohibited in Islam.',
-  },
-  backbiting: {
-    verdict: 'sin',
-    evidence: [
-      {
-        source: 'Quran 49:12',
-        snippet:
-          'And do not spy or backbite each other. Would one of you like to eat the flesh of his brother when dead? You would detest it.',
-      },
-    ],
-    summary: 'Backbiting (speaking ill of someone behind their back) is forbidden in Islam.',
-  },
-
-  // Permissible acts
-  praying: {
-    verdict: 'not_sin',
-    evidence: [
-      {
-        source: 'Quran 2:3',
-        snippet:
-          'Who believe in the unseen, establish prayer, and spend out of what We have provided for them.',
-      },
-    ],
-    summary: 'Prayer (Salah) is one of the five pillars of Islam and is highly recommended.',
-  },
-  prayer: {
-    verdict: 'not_sin',
-    evidence: [
-      {
-        source: 'Quran 2:3',
-        snippet:
-          'Who believe in the unseen, establish prayer, and spend out of what We have provided for them.',
-      },
-    ],
-    summary: 'Prayer (Salah) is one of the five pillars of Islam and is highly recommended.',
-  },
-  'giving charity': {
-    verdict: 'not_sin',
-    evidence: [
-      {
-        source: 'Quran 2:261',
-        snippet:
-          'The example of those who spend their wealth in the way of Allah is like a seed which grows seven spikes; in each spike is a hundred grains.',
-      },
-    ],
-    summary: 'Charity (Zakat and Sadaqah) is encouraged and rewarded greatly in Islam.',
-  },
-  charity: {
-    verdict: 'not_sin',
-    evidence: [
-      {
-        source: 'Quran 2:261',
-        snippet:
-          'The example of those who spend their wealth in the way of Allah is like a seed which grows seven spikes; in each spike is a hundred grains.',
-      },
-    ],
-    summary: 'Charity (Zakat and Sadaqah) is encouraged and rewarded greatly in Islam.',
-  },
-  'reading quran': {
-    verdict: 'not_sin',
-    evidence: [
-      {
-        source: 'Hadith - Tirmidhi',
-        snippet:
-          'The Prophet (peace be upon him) said: "Whoever reads a letter from the Book of Allah, he will have a reward, and this reward will be multiplied by ten."',
-      },
-    ],
-    summary: 'Reading the Quran is highly encouraged and rewarded in Islam.',
-  },
-  'eating halal food': {
-    verdict: 'not_sin',
-    evidence: [
-      {
-        source: 'Quran 2:168',
-        snippet:
-          'O mankind, eat from whatever is on earth that is lawful and good and do not follow the footsteps of Satan.',
-      },
-    ],
-    summary: 'Eating halal (lawful) food is not only permissible but encouraged in Islam.',
-  },
-  fasting: {
-    verdict: 'not_sin',
-    evidence: [
-      {
-        source: 'Quran 2:183',
-        snippet:
-          'O you who believe! Fasting is prescribed for you as it was prescribed for those before you, that you may become righteous.',
-      },
-    ],
-    summary: 'Fasting is prescribed in Islam and is one of the five pillars.',
-  },
-  hajj: {
-    verdict: 'not_sin',
-    evidence: [
-      {
-        source: 'Quran 3:97',
-        snippet:
-          'And pilgrimage to the House is a duty unto Allah for mankind, for him who can find a way thither.',
-      },
-    ],
-    summary: 'Hajj (pilgrimage) is one of the five pillars of Islam for those who are able.',
-  },
-  'helping others': {
-    verdict: 'not_sin',
-    evidence: [
-      {
-        source: 'Hadith - Muslim',
-        snippet:
-          'The Prophet (peace be upon him) said: "Whoever relieves a believer of a burden from burdens of the world, Allah will relieve him of a burden from burdens of the Hereafter."',
-      },
-    ],
-    summary: 'Helping others is highly encouraged and rewarded in Islam.',
-  },
-  'being kind to parents': {
-    verdict: 'not_sin',
-    evidence: [
-      {
-        source: 'Quran 17:23',
-        snippet:
-          'Your Lord has decreed that you worship none but Him, and be kind to parents. Whether one or both of them reach old age with you, do not say "uff" to them or reprimand them, but speak to them graciously.',
-      },
-    ],
-    summary: 'Being kind and respectful to parents is a religious obligation in Islam.',
-  },
-  studying: {
-    verdict: 'not_sin',
-    evidence: [
-      {
-        source: 'Hadith - Ibn Majah',
-        snippet:
-          'The Prophet (peace be upon him) said: "Seek knowledge from the cradle to the grave."',
-      },
-    ],
-    summary: 'Seeking knowledge is encouraged in Islam and is considered a form of worship.',
-  },
-  working: {
-    verdict: 'not_sin',
-    evidence: [
-      {
-        source: 'Hadith - Bukhari',
-        snippet:
-          'The Prophet (peace be upon him) said: "No one eats better food than that which he eats out of the work of his hand."',
-      },
-    ],
-    summary: 'Honest work and earning through lawful means is encouraged in Islam.',
-  },
-
-  // Debated/complex matters - defaults to conservative position
-  singing: {
-    verdict: 'sin',
-    evidence: [
-      {
-        source: 'Islamic Scholarly Consensus',
-        snippet:
-          'Singing is a debated topic among Islamic scholars. While some permit it under certain conditions, others discourage it due to potential spiritual harms.',
-      },
-    ],
-    summary:
-      'Singing is debated among scholars. It is safer to avoid it and focus on dhikr and Quran recitation.',
-  },
-  music: {
-    verdict: 'sin',
-    evidence: [
-      {
-        source: 'Islamic Scholarly Consensus',
-        snippet:
-          'Musical instruments are generally discouraged in Islamic teaching. The daf (frame drum) is permitted for special occasions like weddings.',
-      },
-    ],
-    summary:
-      'Most musical instruments are discouraged in Islam except the daf for specific occasions.',
-  },
-};
-
-/**
- * Search offline knowledge base for deed verification
- */
-const searchOfflineKnowledge = (query: string): DeedVerificationResponse | null => {
-  const normalizedQuery = query.toLowerCase().trim();
-
-  // Direct match
-  if (offlineKnowledgeBase[normalizedQuery]) {
-    return offlineKnowledgeBase[normalizedQuery];
-  }
-
-  // Partial match
-  for (const [key, value] of Object.entries(offlineKnowledgeBase)) {
-    if (normalizedQuery.includes(key) || key.includes(normalizedQuery)) {
-      return value;
-    }
-  }
-
-  return null;
-};
+// Removed offline knowledge base - using API only for accurate results
+// Removed offline knowledge base - using API only for accurate results

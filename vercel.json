@@ -4,6 +4,11 @@
   "installCommand": "pnpm install",
   "devCommand": "pnpm dev",
   "framework": "vite",
+  "functions": {
+    "api/deed-checker.js": {
+      "maxDuration": 30
+    }
+  },
   "rewrites": [
     {
       "source": "/(.*)",
@@ -11,6 +16,15 @@
     }
   ],
   "headers": [
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        }
+      ]
+    },
     {
       "source": "/sw.js",
       "headers": [

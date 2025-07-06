@@ -7,6 +7,7 @@ import { useSinCounter } from '@/hooks/useSinCounter';
 import { useTrendData } from '@/hooks/useTrendData';
 import { verifyDeed } from '@/lib/api';
 import {
+  AlertTriangle,
   BarChart3,
   CheckCircle,
   Loader2,
@@ -39,7 +40,7 @@ interface Evidence {
 }
 
 interface VerificationResult {
-  verdict: 'sin' | 'not_sin';
+  verdict: 'sin' | 'not_sin' | 'contradictory';
   evidence: Evidence[];
   summary?: string;
 }
@@ -403,22 +404,34 @@ export default function Dashboard() {
                       className={`p-3 xs:p-4 sm:p-5 rounded-lg border-2 transition-all ${
                         verificationResult.verdict === 'sin'
                           ? 'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20'
-                          : 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20'
+                          : verificationResult.verdict === 'contradictory'
+                            ? 'border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/20'
+                            : 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20'
                       }`}
                     >
                       <div className="flex items-center gap-2 mb-2 xs:mb-3">
                         {verificationResult.verdict === 'sin' ? (
                           <XCircle className="w-4 h-4 xs:w-5 xs:h-5 sm:w-6 sm:h-6 text-red-600 dark:text-red-400" />
+                        ) : verificationResult.verdict === 'contradictory' ? (
+                          <AlertTriangle className="w-4 h-4 xs:w-5 xs:h-5 sm:w-6 sm:h-6 text-yellow-600 dark:text-yellow-400" />
                         ) : (
                           <CheckCircle className="w-4 h-4 xs:w-5 xs:h-5 sm:w-6 sm:h-6 text-green-600 dark:text-green-400" />
                         )}
                         <Badge
                           variant={
-                            verificationResult.verdict === 'sin' ? 'destructive' : 'secondary'
+                            verificationResult.verdict === 'sin'
+                              ? 'destructive'
+                              : verificationResult.verdict === 'contradictory'
+                                ? 'outline'
+                                : 'secondary'
                           }
                           className="text-xs sm:text-sm font-medium px-2 xs:px-3 py-1"
                         >
-                          {verificationResult.verdict === 'sin' ? 'Not Permissible' : 'Permissible'}
+                          {verificationResult.verdict === 'sin'
+                            ? 'Not Permissible'
+                            : verificationResult.verdict === 'contradictory'
+                              ? 'Contradictory'
+                              : 'Permissible'}
                         </Badge>
                       </div>
 

@@ -101,37 +101,44 @@ export default async function handler(req, res) {
       throw new Error('No response from Reminder.dev API');
     }
 
-    // Analyze the response with extremely careful verdict determination
+    // Analyze the response with smarter verdict determination
     const answer = data.answer.toLowerCase();
     const cleanAnswer = data.answer
       .replace(/<[^>]*>/g, '')
       .replace(/&[^;]+;/g, '')
       .trim();
 
-    // Default to most conservative approach
+    // Start with conservative default
     let verdict = 'sin';
 
-    // Only very clear and unambiguous permissibility indicators
-    const explicitlyPermissible = [
-      'is explicitly permissible',
-      'is clearly halal',
-      'is definitely allowed',
-      'allah has made it halal',
-      'is lawful and good',
+    // Clear permissibility indicators
+    const clearlyPermissible = [
+      'is permissible',
+      'is halal',
+      'is allowed',
+      'is encouraged',
+      'is recommended',
       'is mustahabb',
+      'is mandated',
+      'is obligatory',
+      'allah encourages',
+      'allah commands',
+      'highly encouraged',
     ];
 
-    // Any indication of prohibition or doubt
-    const anyDoubt = [
-      'forbidden',
-      'haram',
-      'prohibited',
+    // Clear prohibition indicators
+    const clearlyForbidden = [
+      'is forbidden',
+      'is haram',
+      'is prohibited',
       'not allowed',
-      'not permissible',
-      'should avoid',
-      'better to avoid',
-      'discouraged',
-      'makruh',
+      'must not',
+      'allah forbids',
+      'strictly forbidden',
+    ];
+
+    // Uncertainty/debate indicators
+    const uncertaintyIndicators = [
       'debated',
       'scholars differ',
       'depends on',
@@ -142,24 +149,21 @@ export default async function handler(req, res) {
       'context matters',
       'disputed',
       'disagreement',
-      'some say',
-      'others believe',
-      'however',
-      'but',
-      'although',
-      'except',
-      'unless',
-      'conditions',
-      'circumstances',
+      'conditions apply',
     ];
 
-    // Check for any doubt or ambiguity
-    const hasAnyDoubt = anyDoubt.some((phrase) => answer.includes(phrase));
-    const hasExplicitPermission = explicitlyPermissible.some((phrase) => answer.includes(phrase));
+    // Count evidence strength
+    const permissibleCount = clearlyPermissible.filter((phrase) => answer.includes(phrase)).length;
+    const forbiddenCount = clearlyForbidden.filter((phrase) => answer.includes(phrase)).length;
+    const uncertaintyCount = uncertaintyIndicators.filter((phrase) =>
+      answer.includes(phrase)
+    ).length;
 
-    // Only allow 'not_sin' if explicitly clear and no doubt at all
-    if (hasExplicitPermission && !hasAnyDoubt) {
-      // Additional check: ensure the query topic matches the response
+    // Smart verdict determination
+    if (uncertaintyCount > 0) {
+      verdict = 'contradictory'; // New verdict type for debated matters
+    } else if (permissibleCount > forbiddenCount && permissibleCount > 0) {
+      // Ensure the response is actually about the query topic
       const queryWords = query.toLowerCase().split(' ');
       const responseMatchesQuery = queryWords.some(
         (word) => word.length > 3 && answer.includes(word)
@@ -168,8 +172,10 @@ export default async function handler(req, res) {
       if (responseMatchesQuery) {
         verdict = 'not_sin';
       }
+    } else if (forbiddenCount > 0) {
+      verdict = 'sin';
     }
-    // All other cases default to 'sin' for maximum safety
+    // Default remains 'sin' for unclear cases
 
     // Process references with relevance filtering and proper citation formatting
     const queryKeywords = query
@@ -229,9 +235,15 @@ export default async function handler(req, res) {
           }
         }
 
-        // Ensure snippet is meaningful and concise
-        if (snippet.length > 180) {
-          snippet = snippet.substring(0, 177) + '...';
+        // Improve snippet readability and length
+        if (snippet.length > 300) {
+          // Find a good breaking point (end of sentence)
+          const breakPoint = snippet.substring(0, 280).lastIndexOf('.');
+          if (breakPoint > 200) {
+            snippet = snippet.substring(0, breakPoint + 1);
+          } else {
+            snippet = snippet.substring(0, 280) + '...';
+          }
         }
 
         return { source, snippet };
@@ -251,17 +263,17 @@ export default async function handler(req, res) {
     // Cross-verify with Al-Quran Cloud API for additional Quran references
     const crossVerifiedEvidence = await crossVerifyQuranReferences(query, finalEvidence);
 
-    // Create very concise summary (1-2 sentences maximum)
+    // Create accurate summary that matches the verdict
     let summary = cleanAnswer;
 
-    // Extract the most direct statement about the ruling
-    const sentences = cleanAnswer.split(/[.!?]+/).filter((s) => s.trim().length > 5);
+    // Extract the most relevant statement about the ruling
+    const sentences = cleanAnswer.split(/[.!?]+/).filter((s) => s.trim().length > 10);
     if (sentences.length > 0) {
-      // Look for the sentence that contains the core ruling
-      let coreSentence = sentences[0].trim();
+      // Find the sentence that best explains the verdict
+      let bestSentence = sentences[0].trim();
 
-      // Prioritize sentences with clear verdict terms
-      for (const sentence of sentences.slice(0, 4)) {
+      // Look for sentences that contain clear verdict terms
+      for (const sentence of sentences.slice(0, 5)) {
         const s = sentence.trim().toLowerCase();
         if (
           s.includes('permissible') ||
@@ -269,27 +281,39 @@ export default async function handler(req, res) {
           s.includes('haram') ||
           s.includes('halal') ||
           s.includes('allowed') ||
-          s.includes('prohibited')
+          s.includes('prohibited') ||
+          s.includes('encouraged') ||
+          s.includes('recommended')
         ) {
-          coreSentence = sentence.trim();
+          bestSentence = sentence.trim();
           break;
         }
       }
 
-      summary = coreSentence;
+      summary = bestSentence;
 
-      // If verdict is uncertain, add clarification
-      if (
-        verdict === 'sin' &&
-        (summary.includes('debated') || summary.includes('scholars differ'))
+      // Align summary with verdict for consistency
+      if (verdict === 'contradictory') {
+        summary = `${query.charAt(0).toUpperCase() + query.slice(1)} is debated among Islamic scholars with different opinions.`;
+      } else if (
+        verdict === 'not_sin' &&
+        !summary.toLowerCase().includes('permissible') &&
+        !summary.toLowerCase().includes('allowed')
       ) {
-        summary += ' Due to scholarly disagreement, it is safer to avoid this practice.';
+        summary = `${summary} This is generally considered permissible in Islam.`;
+      } else if (
+        verdict === 'sin' &&
+        !summary.toLowerCase().includes('forbidden') &&
+        !summary.toLowerCase().includes('prohibited')
+      ) {
+        summary = `${summary} This should be avoided according to Islamic guidance.`;
       }
     }
 
-    // Ensure summary is very concise (max 120 characters for mobile UX)
-    if (summary.length > 120) {
-      summary = summary.substring(0, 117) + '...';
+    // Keep summary concise but complete
+    if (summary.length > 200) {
+      const words = summary.split(' ');
+      summary = words.slice(0, 30).join(' ') + '.';
     }
 
     const result = {
