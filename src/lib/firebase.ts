@@ -1,33 +1,39 @@
-import { initializeApp, type FirebaseApp } from 'firebase/app';
-import { getAuth, type Auth, setPersistence, browserLocalPersistence } from 'firebase/auth';
-import { getFirestore, type Firestore } from 'firebase/firestore';
+import { initializeApp, type FirebaseApp } from "firebase/app";
+import {
+  browserLocalPersistence,
+  getAuth,
+  setPersistence,
+  type Auth,
+} from "firebase/auth";
+import { getFirestore, type Firestore } from "firebase/firestore";
 
 // Helper function to get environment variables with multiple fallbacks
 const getEnvVar = (key: string): string => {
   // In development, prefer direct environment variables
   if (import.meta.env.DEV) {
     const envValue = import.meta.env[key];
-    if (envValue && envValue !== '') {
+    if (envValue && envValue !== "") {
       return envValue;
     }
   }
 
   // 1. Try runtime config first (from config.js) for production
-  if (typeof window !== 'undefined') {
-    const runtimeConfig = (window as { __FIREBASE_CONFIG__?: Record<string, string> })
-      .__FIREBASE_CONFIG__;
-    if (runtimeConfig && runtimeConfig[key] && runtimeConfig[key] !== '') {
+  if (typeof window !== "undefined") {
+    const runtimeConfig = (
+      window as { __FIREBASE_CONFIG__?: Record<string, string> }
+    ).__FIREBASE_CONFIG__;
+    if (runtimeConfig && runtimeConfig[key] && runtimeConfig[key] !== "") {
       return runtimeConfig[key];
     }
   }
 
   // 2. Fallback to Vite's import.meta.env
   const envValue = import.meta.env[key];
-  if (envValue && envValue !== '') {
+  if (envValue && envValue !== "") {
     return envValue;
   }
 
-  return '';
+  return "";
 };
 
 // Validate Firebase configuration
@@ -35,8 +41,8 @@ const isValidConfig = (config: Record<string, string>) =>
   config.apiKey &&
   config.authDomain &&
   config.projectId &&
-  config.apiKey !== 'your_api_key_here' &&
-  config.apiKey !== '' &&
+  config.apiKey !== "your_api_key_here" &&
+  config.apiKey !== "" &&
   config.apiKey.length > 10;
 
 // Firebase app state
@@ -56,7 +62,7 @@ const waitForRuntimeConfig = (): Promise<void> => {
       return;
     }
 
-    if (typeof window === 'undefined') {
+    if (typeof window === "undefined") {
       resolve();
       return;
     }
@@ -67,8 +73,9 @@ const waitForRuntimeConfig = (): Promise<void> => {
     const checkConfig = () => {
       attempts++;
 
-      const runtimeConfig = (window as { __FIREBASE_CONFIG__?: Record<string, string> })
-        .__FIREBASE_CONFIG__;
+      const runtimeConfig = (
+        window as { __FIREBASE_CONFIG__?: Record<string, string> }
+      ).__FIREBASE_CONFIG__;
 
       if (runtimeConfig && runtimeConfig.VITE_FIREBASE_API_KEY) {
         // Runtime config found
@@ -83,7 +90,10 @@ const waitForRuntimeConfig = (): Promise<void> => {
       }
 
       // Check if we're in development mode
-      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      if (
+        window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1"
+      ) {
         // In development, don't wait too long - use env vars after short delay
         if (attempts >= 6) {
           // 300ms max wait in development
@@ -115,33 +125,40 @@ const initializeFirebase = async (): Promise<{ auth: Auth; db: Firestore }> => {
 
       // Get the configuration
       const firebaseConfig = {
-        apiKey: getEnvVar('VITE_FIREBASE_API_KEY'),
-        authDomain: getEnvVar('VITE_FIREBASE_AUTH_DOMAIN'),
-        projectId: getEnvVar('VITE_FIREBASE_PROJECT_ID'),
-        storageBucket: getEnvVar('VITE_FIREBASE_STORAGE_BUCKET'),
-        messagingSenderId: getEnvVar('VITE_FIREBASE_MESSAGING_SENDER_ID'),
-        appId: getEnvVar('VITE_FIREBASE_APP_ID'),
+        apiKey: getEnvVar("VITE_FIREBASE_API_KEY"),
+        authDomain: getEnvVar("VITE_FIREBASE_AUTH_DOMAIN"),
+        projectId: getEnvVar("VITE_FIREBASE_PROJECT_ID"),
+        storageBucket: getEnvVar("VITE_FIREBASE_STORAGE_BUCKET"),
+        messagingSenderId: getEnvVar("VITE_FIREBASE_MESSAGING_SENDER_ID"),
+        appId: getEnvVar("VITE_FIREBASE_APP_ID"),
       };
 
       if (!isValidConfig(firebaseConfig)) {
         const missingKeys = Object.entries(firebaseConfig)
-          .filter(([, value]) => !value || value === '')
+          .filter(([, value]) => !value || value === "")
           .map(([key]) => key);
 
-        console.error('❌ Firebase configuration is invalid. Missing:', missingKeys);
+        console.error(
+          "❌ Firebase configuration is invalid. Missing:",
+          missingKeys
+        );
 
         // In production, configuration missing - throw error immediately
         if (
-          typeof window !== 'undefined' &&
-          window.location.hostname !== 'localhost' &&
-          window.location.hostname !== '127.0.0.1' &&
+          typeof window !== "undefined" &&
+          window.location.hostname !== "localhost" &&
+          window.location.hostname !== "127.0.0.1" &&
           missingKeys.length > 0
         ) {
-          throw new Error(`Firebase configuration is invalid. Missing: ${missingKeys.join(', ')}`);
+          throw new Error(
+            `Firebase configuration is invalid. Missing: ${missingKeys.join(", ")}`
+          );
         }
 
         if (!isValidConfig(firebaseConfig)) {
-          throw new Error(`Firebase configuration is invalid. Missing: ${missingKeys.join(', ')}`);
+          throw new Error(
+            `Firebase configuration is invalid. Missing: ${missingKeys.join(", ")}`
+          );
         }
       }
 
@@ -175,7 +192,7 @@ const initializeFirebase = async (): Promise<{ auth: Auth; db: Firestore }> => {
       // Firebase fully initialized
       return { auth, db };
     } catch (error) {
-      console.error('❌ Firebase initialization failed:', error);
+      console.error("❌ Firebase initialization failed:", error);
 
       // Reset state so we can try again
       app = null;

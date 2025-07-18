@@ -1,44 +1,46 @@
-import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Loader2, Eye, EyeOff, Mail, Lock, Shield, ArrowLeft } from 'lucide-react';
-import { toast } from 'sonner';
-import { useAuth } from '@/hooks/useAuth';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { useAuth } from "@/hooks/useAuth";
+import {
+  ArrowLeft,
+  Eye,
+  EyeOff,
+  Loader2,
+  Lock,
+  Mail,
+  Shield,
+} from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
 interface AuthProps {
   onBack: () => void;
 }
 
-/**
- * Authentication component for login and signup
- */
 export default function Auth({ onBack }: AuthProps) {
   const { signIn, signUp } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  /**
-   * Handle form submission for login/signup
-   */
   const handleSubmit = async () => {
     if (!email || !password) {
-      toast.error('Please fill in all fields');
+      toast.error("Please fill in all fields");
       return;
     }
 
     if (!isLogin && password !== confirmPassword) {
-      toast.error('Passwords do not match');
+      toast.error("Passwords do not match");
       return;
     }
 
     if (password.length < 6) {
-      toast.error('Password must be at least 6 characters');
+      toast.error("Password must be at least 6 characters");
       return;
     }
 
@@ -46,13 +48,20 @@ export default function Auth({ onBack }: AuthProps) {
     try {
       if (isLogin) {
         await signIn(email, password);
-        toast.success(<div>Welcome back!<br />As-salāmu ʿalaykum</div>);
+        toast.success(
+          <div>
+            Welcome back!
+            <br />
+            As-salāmu ʿalaykum
+          </div>
+        );
       } else {
         await signUp(email, password);
-        toast.success('Account created successfully! Barakallahu feeki');
+        toast.success("Account created successfully! Barakallahu feeki");
       }
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Authentication failed';
+      const errorMessage =
+        error instanceof Error ? error.message : "Authentication failed";
       toast.error(errorMessage);
     } finally {
       setLoading(false);
@@ -60,7 +69,7 @@ export default function Auth({ onBack }: AuthProps) {
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       handleSubmit();
     }
   };
@@ -85,13 +94,15 @@ export default function Auth({ onBack }: AuthProps) {
           <div className="w-12 h-12 xs:w-14 xs:h-14 bg-zinc-900 dark:bg-zinc-950 rounded-xl flex items-center justify-center shadow-lg mx-auto mb-2 xs:mb-3 border border-zinc-200 dark:border-zinc-800">
             {/* Jannah Gate Arch */}
             <svg viewBox="0 0 24 24" className="w-6 h-6 xs:w-7 xs:h-7">
-              <path d="M12 3 
+              <path
+                d="M12 3 
                        C7 3, 4 8, 4 16 
                        L4 19 
                        L20 19 
                        L20 16 
-                       C20 8, 17 3, 12 3Z" 
-                    fill="#22c55e"/>
+                       C20 8, 17 3, 12 3Z"
+                fill="#22c55e"
+              />
             </svg>
           </div>
           <h1 className="text-lg xs:text-xl font-bold text-slate-800 dark:text-white font-inter mb-1">
@@ -107,10 +118,12 @@ export default function Auth({ onBack }: AuthProps) {
           <CardHeader className="text-center pb-3 px-4 xs:px-5 pt-4 xs:pt-5">
             <CardTitle className="text-sm xs:text-base font-semibold text-slate-800 dark:text-zinc-100 flex items-center justify-center gap-2">
               <Shield className="w-4 h-4 text-slate-600 dark:text-zinc-400" />
-              {isLogin ? 'Sign In' : 'Create Account'}
+              {isLogin ? "Sign In" : "Create Account"}
             </CardTitle>
             <p className="text-xs text-slate-600 dark:text-zinc-400 mt-1">
-              {isLogin ? 'Continue your spiritual journey' : 'Begin mindful accountability'}
+              {isLogin
+                ? "Continue your spiritual journey"
+                : "Begin mindful accountability"}
             </p>
           </CardHeader>
 
@@ -151,7 +164,7 @@ export default function Auth({ onBack }: AuthProps) {
                   <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-500 dark:text-zinc-400" />
                   <Input
                     id="password"
-                    type={showPassword ? 'text' : 'password'}
+                    type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     onKeyPress={handleKeyPress}
@@ -165,7 +178,11 @@ export default function Auth({ onBack }: AuthProps) {
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-500 dark:text-zinc-400 hover:text-slate-700 dark:hover:text-zinc-200 transition-colors"
                     disabled={loading}
                   >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
                   </button>
                 </div>
               </div>
@@ -183,7 +200,7 @@ export default function Auth({ onBack }: AuthProps) {
                     <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-500 dark:text-zinc-400" />
                     <Input
                       id="confirmPassword"
-                      type={showConfirmPassword ? 'text' : 'password'}
+                      type={showConfirmPassword ? "text" : "password"}
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       onKeyPress={handleKeyPress}
@@ -193,7 +210,9 @@ export default function Auth({ onBack }: AuthProps) {
                     />
                     <button
                       type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      onClick={() =>
+                        setShowConfirmPassword(!showConfirmPassword)
+                      }
                       className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-500 dark:text-zinc-400 hover:text-slate-700 dark:hover:text-zinc-200 transition-colors"
                       disabled={loading}
                     >
@@ -214,7 +233,11 @@ export default function Auth({ onBack }: AuthProps) {
                 disabled={loading}
               >
                 {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                {loading ? 'Please wait...' : isLogin ? 'Sign In' : 'Create Account'}
+                {loading
+                  ? "Please wait..."
+                  : isLogin
+                    ? "Sign In"
+                    : "Create Account"}
               </Button>
 
               {/* Toggle Auth Mode */}
@@ -224,7 +247,9 @@ export default function Auth({ onBack }: AuthProps) {
                   className="text-slate-600 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-zinc-200 text-xs transition-colors hover:underline font-medium"
                   disabled={loading}
                 >
-                  {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
+                  {isLogin
+                    ? "Don't have an account? Sign up"
+                    : "Already have an account? Sign in"}
                 </button>
               </div>
             </div>
@@ -240,7 +265,8 @@ export default function Auth({ onBack }: AuthProps) {
                 Islamic Privacy Promise
               </h3>
               <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                Your spiritual journey stays private. We store only dates and counts - never your personal struggles or details.
+                Your spiritual journey stays private. We store only dates and
+                counts - never your personal struggles or details.
               </p>
             </div>
           </div>

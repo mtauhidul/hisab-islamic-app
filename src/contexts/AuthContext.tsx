@@ -1,13 +1,13 @@
-import { getFirebaseAuth } from '@/lib/firebase';
-import type { User } from 'firebase/auth';
+import { getFirebaseAuth } from "@/lib/firebase";
+import type { User } from "firebase/auth";
 import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signOut,
-} from 'firebase/auth';
-import type { ReactNode } from 'react';
-import { createContext, useEffect, useState } from 'react';
+} from "firebase/auth";
+import type { ReactNode } from "react";
+import { createContext, useEffect, useState } from "react";
 
 interface AuthContextType {
   user: User | null;
@@ -40,7 +40,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Set a safety timeout to prevent infinite loading
         timeoutId = setTimeout(() => {
           if (isMounted) {
-            setError('Authentication initialization timed out. Please refresh the page.');
+            setError(
+              "Authentication initialization timed out. Please refresh the page."
+            );
             setLoading(false);
           }
         }, 10000); // 10 second timeout
@@ -65,15 +67,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           },
           (authError) => {
             if (!isMounted) return;
-            console.error('❌ AuthProvider: Auth state listener error:', authError);
+            console.error(
+              "❌ AuthProvider: Auth state listener error:",
+              authError
+            );
             setError(`Authentication error: ${authError.message}`);
             setLoading(false);
           }
         );
       } catch (initError: unknown) {
         if (!isMounted) return;
-        const errorMessage = initError instanceof Error ? initError.message : 'Unknown error';
-        console.error('❌ AuthProvider: Firebase Auth initialization failed:', initError);
+        const errorMessage =
+          initError instanceof Error ? initError.message : "Unknown error";
+        console.error(
+          "❌ AuthProvider: Firebase Auth initialization failed:",
+          initError
+        );
         setError(`Failed to initialize authentication: ${errorMessage}`);
         setLoading(false);
       }
