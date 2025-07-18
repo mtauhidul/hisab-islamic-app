@@ -11,17 +11,16 @@ interface DailyCount {
 }
 
 /**
- * Hook for managing daily sin counter with offline support
+ * Hook for managing daily sin counter
  */
 export const useSinCounter = () => {
   const { user } = useAuth();
   const [count, setCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
-  const [pendingSync, setPendingSync] = useState(false);
 
   const today = format(new Date(), 'yyyy-MM-dd');
 
-  // Load today's count from Firestore or localStorage
+  // Load today's count from Firestore
   useEffect(() => {
     const loadTodaysCount = async () => {
       if (!user) {
@@ -29,7 +28,7 @@ export const useSinCounter = () => {
         return;
       }
 
-      // Try to get from Firestore first
+      // Get from Firestore
       try {
         const db = await getFirebaseDb();
         const docRef = doc(db, 'users', user.uid, 'dailyCounts', today);
@@ -39,23 +38,11 @@ export const useSinCounter = () => {
           const data = docSnap.data() as DailyCount;
           setCount(data.count || 0);
         } else {
-          // Check localStorage for offline data
-          const offlineKey = `sin-count-${user.uid}-${today}`;
-          const offlineCount = localStorage.getItem(offlineKey);
-          if (offlineCount) {
-            setCount(parseInt(offlineCount, 10));
-            setPendingSync(true);
-          }
+          setCount(0);
         }
       } catch (error) {
         console.error('Error loading count:', error);
-        // Fallback to localStorage
-        const offlineKey = `sin-count-${user.uid}-${today}`;
-        const offlineCount = localStorage.getItem(offlineKey);
-        if (offlineCount) {
-          setCount(parseInt(offlineCount, 10));
-          setPendingSync(true);
-        }
+        setCount(0);
       }
 
       setLoading(false);
@@ -73,11 +60,7 @@ export const useSinCounter = () => {
     const newCount = count + 1;
     setCount(newCount);
 
-    // Store locally immediately
-    const offlineKey = `sin-count-${user.uid}-${today}`;
-    localStorage.setItem(offlineKey, newCount.toString());
-
-    // Try to sync with Firestore
+    // Sync with Firestore
     try {
       const db = await getFirebaseDb();
       const docRef = doc(db, 'users', user.uid, 'dailyCounts', today);
@@ -85,12 +68,10 @@ export const useSinCounter = () => {
         count: newCount,
         ts: serverTimestamp(),
       });
-      // Remove from localStorage after successful sync
-      localStorage.removeItem(offlineKey);
-      setPendingSync(false);
     } catch (error) {
       console.error('Error syncing count:', error);
-      setPendingSync(true);
+      // Revert the count on error
+      setCount(count);
     }
   };
 
@@ -103,11 +84,7 @@ export const useSinCounter = () => {
     const newCount = count - 1;
     setCount(newCount);
 
-    // Store locally immediately
-    const offlineKey = `sin-count-${user.uid}-${today}`;
-    localStorage.setItem(offlineKey, newCount.toString());
-
-    // Try to sync with Firestore
+    // Sync with Firestore
     try {
       const db = await getFirebaseDb();
       const docRef = doc(db, 'users', user.uid, 'dailyCounts', today);
@@ -115,46 +92,17 @@ export const useSinCounter = () => {
         count: newCount,
         ts: serverTimestamp(),
       });
-      // Remove from localStorage after successful sync
-      localStorage.removeItem(offlineKey);
-      setPendingSync(false);
     } catch (error) {
       console.error('Error syncing count:', error);
-      setPendingSync(true);
-    }
-  };
-
-  /**
-   * Sync offline data with Firestore
-   */
-  const syncOfflineData = async () => {
-    if (!user) return;
-
-    const offlineKey = `sin-count-${user.uid}-${today}`;
-    const offlineCount = localStorage.getItem(offlineKey);
-
-    if (offlineCount) {
-      try {
-        const db = await getFirebaseDb();
-        const docRef = doc(db, 'users', user.uid, 'dailyCounts', today);
-        await setDoc(docRef, {
-          count: parseInt(offlineCount, 10),
-          ts: serverTimestamp(),
-        });
-        localStorage.removeItem(offlineKey);
-        setPendingSync(false);
-      } catch (error) {
-        console.error('Error syncing offline data:', error);
-      }
+      // Revert the count on error
+      setCount(count);
     }
   };
 
   return {
     count,
     loading,
-    pendingSync,
     increment,
     decrement,
-    syncOfflineData,
   };
 };

@@ -21,19 +21,12 @@ const envVars = {
   'VITE_FIREBASE_APP_ID': process.env.VITE_FIREBASE_APP_ID || '',
 };
 
-// Generate build timestamp and ID for cache busting
-const buildTimestamp = Date.now();
-const buildId = Math.random().toString(36).substr(2, 9);
-
 // Generate the config.js content
 const configContent = `// Runtime configuration for production
 // Generated at build time: ${new Date().toISOString()}
-// Build timestamp: ${buildTimestamp}
-// Build ID: ${buildId}
 
 (function() {
   if (typeof window !== 'undefined') {
-    // Always set/update the config with current build timestamp
     window.__FIREBASE_CONFIG__ = {
       VITE_FIREBASE_API_KEY: "${envVars.VITE_FIREBASE_API_KEY}",
       VITE_FIREBASE_AUTH_DOMAIN: "${envVars.VITE_FIREBASE_AUTH_DOMAIN}",
@@ -42,10 +35,6 @@ const configContent = `// Runtime configuration for production
       VITE_FIREBASE_MESSAGING_SENDER_ID: "${envVars.VITE_FIREBASE_MESSAGING_SENDER_ID}",
       VITE_FIREBASE_APP_ID: "${envVars.VITE_FIREBASE_APP_ID}",
     };
-
-    // Mark the config as loaded with timestamp
-    window.__FIREBASE_CONFIG_LOADED__ = ${buildTimestamp};
-    window.__FIREBASE_BUILD_ID__ = "${buildId}";
   }
 })();`;
 

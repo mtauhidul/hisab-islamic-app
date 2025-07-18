@@ -12,10 +12,5 @@
       VITE_FIREBASE_MESSAGING_SENDER_ID: '931613743919',
       VITE_FIREBASE_APP_ID: '1:931613743919:web:bfd1aee4ad854676ee5fda',
     };
-
-    // Mark the config as loaded
-    window.__FIREBASE_CONFIG_LOADED__ = Date.now();
-
-    // Config loaded successfully for production
   }
 })();

@@ -114,7 +114,7 @@ const initializeFirebase = async (): Promise<{ auth: Auth; db: Firestore }> => {
       await waitForRuntimeConfig();
 
       // Get the configuration
-      let firebaseConfig = {
+      const firebaseConfig = {
         apiKey: getEnvVar('VITE_FIREBASE_API_KEY'),
         authDomain: getEnvVar('VITE_FIREBASE_AUTH_DOMAIN'),
         projectId: getEnvVar('VITE_FIREBASE_PROJECT_ID'),
@@ -130,45 +130,14 @@ const initializeFirebase = async (): Promise<{ auth: Auth; db: Firestore }> => {
 
         console.error('❌ Firebase configuration is invalid. Missing:', missingKeys);
 
-        // In production, try to reload config.js once if it's missing
+        // In production, configuration missing - throw error immediately
         if (
           typeof window !== 'undefined' &&
           window.location.hostname !== 'localhost' &&
           window.location.hostname !== '127.0.0.1' &&
           missingKeys.length > 0
         ) {
-          // Attempting to reload config.js
-
-          try {
-            const xhr = new XMLHttpRequest();
-            const cacheBuster = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-            xhr.open('GET', `/config.js?reload=${cacheBuster}`, false);
-            xhr.setRequestHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-            xhr.setRequestHeader('Pragma', 'no-cache');
-            xhr.send();
-
-            if (xhr.status === 200) {
-              new Function(xhr.responseText)();
-              // Config.js reloaded successfully
-
-              // Retry with new config
-              const retryConfig = {
-                apiKey: getEnvVar('VITE_FIREBASE_API_KEY'),
-                authDomain: getEnvVar('VITE_FIREBASE_AUTH_DOMAIN'),
-                projectId: getEnvVar('VITE_FIREBASE_PROJECT_ID'),
-                storageBucket: getEnvVar('VITE_FIREBASE_STORAGE_BUCKET'),
-                messagingSenderId: getEnvVar('VITE_FIREBASE_MESSAGING_SENDER_ID'),
-                appId: getEnvVar('VITE_FIREBASE_APP_ID'),
-              };
-
-              if (isValidConfig(retryConfig)) {
-                firebaseConfig = retryConfig;
-                // Firebase config updated after reload
-              }
-            }
-          } catch {
-            // Failed to reload config.js - continuing with fallback
-          }
+          throw new Error(`Firebase configuration is invalid. Missing: ${missingKeys.join(', ')}`);
         }
 
         if (!isValidConfig(firebaseConfig)) {

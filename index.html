@@ -83,103 +83,24 @@
       </style>
     </div>
 
-    <!-- Load runtime configuration synchronously before the main app -->
+    <!-- Load runtime configuration -->
     <script>
       (function() {
-        // Device and browser detection
-        var isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        var isDesktop = !isMobile;
-        var userAgent = navigator.userAgent;
-        
-        // Domain-specific cache busting for custom domains
-        var isCustomDomain = window.location.hostname === 'hisabdaily.com' || window.location.hostname === 'www.hisabdaily.com';
-        var isVercelDomain = window.location.hostname.includes('vercel.app');
-        
-        // Different cache strategies for mobile vs desktop
-        var cacheBuster;
-        if (isCustomDomain && isDesktop) {
-          // Extra aggressive for desktop custom domain
-          cacheBuster = Date.now() + '-' + Math.random().toString(36).substr(2, 9) + '-desktop-' + Math.floor(Math.random() * 100000);
-        } else if (isCustomDomain && isMobile) {
-          // Less aggressive for mobile (working fine)
-          cacheBuster = Date.now() + '-mobile-' + Math.random().toString(36).substr(2, 5);
-        } else {
-          // Standard for Vercel domains
-          cacheBuster = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-        }
-        
-        var configUrl = '/config.js?v=' + cacheBuster;
-        
-        // Add device and domain-specific parameters
-        if (isCustomDomain) {
-          configUrl += '&domain=custom&device=' + (isMobile ? 'mobile' : 'desktop') + '&t=' + performance.now();
-        }
-        
-        // Loading config.js
-        
-        var maxRetries = (isCustomDomain && isDesktop) ? 2 : (isCustomDomain ? 1 : 0);
-        var retryCount = 0;
-        
-        function loadConfig() {
-          try {
-            var xhr = new XMLHttpRequest();
-            xhr.open('GET', configUrl, false); // Synchronous request
-            
-            // Extra aggressive headers for custom domains
-            xhr.setRequestHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
-            xhr.setRequestHeader('Pragma', 'no-cache');
-            xhr.setRequestHeader('Expires', '0');
-            
-            if (isCustomDomain && isDesktop) {
-              xhr.setRequestHeader('X-Custom-Domain', 'true');
-              xhr.setRequestHeader('X-Force-Fresh', Date.now().toString());
-              xhr.setRequestHeader('X-Desktop-Browser', 'true');
-              xhr.setRequestHeader('X-Clear-Cache', 'force');
-            }
-            
-            xhr.send();
-            
-            if (xhr.status === 200) {
-              // Execute the config script content
-              new Function(xhr.responseText)();
-              
-              // Verify config was loaded
-              if (window.__FIREBASE_CONFIG__ && window.__FIREBASE_CONFIG__.VITE_FIREBASE_API_KEY) {
-                return true;
-              } else {
-                return false;
-              }
-            } else {
-              return false;
-            }
-          } catch (error) {
-            // Failed to load config.js synchronously
-            return false;
+        try {
+          var xhr = new XMLHttpRequest();
+          xhr.open('GET', '/config.js', false); // Synchronous request
+          xhr.send();
+          
+          if (xhr.status === 200) {
+            // Execute the config script content
+            new Function(xhr.responseText)();
           }
-        }
-        
-        // Try loading config with retries for custom domains
-        var success = loadConfig();
-        
-        while (!success && retryCount < maxRetries && isCustomDomain) {
-          retryCount++;
-          // Retrying config load
-          
-          // Update cache buster for retry
-          cacheBuster = Date.now() + '-' + Math.random().toString(36).substr(2, 9) + '-retry' + retryCount;
-          configUrl = '/config.js?v=' + cacheBuster + '&domain=custom&retry=' + retryCount;
-          
-          success = loadConfig();
-        }
-        
-        // Fallback to dynamic loading if all retries failed
-        if (!success) {
-          // Using fallback loading
+        } catch (error) {
+          // Failed to load config.js synchronously
+          // Fallback to dynamic loading
           var script = document.createElement('script');
-          script.src = '/config.js?fallback=' + Date.now();
+          script.src = '/config.js';
           script.async = false;
-          script.setAttribute('data-timestamp', Date.now());
-          script.setAttribute('data-domain', window.location.hostname);
           document.head.appendChild(script);
         }
       })();
@@ -201,37 +122,6 @@
       }, 1000);
     </script>
 
-    <!-- Service Worker Registration with cache management -->
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          // Device detection for SW cache management
-          var isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-          var isDesktop = !isMobile;
-          var isCustomDomain = window.location.hostname === 'hisabdaily.com' || window.location.hostname === 'www.hisabdaily.com';
-          
-          navigator.serviceWorker
-            .register('/sw.js')
-            .then((registration) => {
-              // SW registered successfully
-              
-              // Clear SW cache for desktop custom domain to prevent config.js caching issues
-              if (isDesktop && isCustomDomain && 'caches' in window) {
-                caches.keys().then(cacheNames => {
-                  cacheNames.forEach(cacheName => {
-                    if (cacheName.includes('config') || cacheName.includes('static')) {
-                      // Clearing SW cache for desktop
-                      caches.delete(cacheName);
-                    }
-                  });
-                });
-              }
-            })
-            .catch((registrationError) => {
-              // SW registration failed
-            });
-        });
-      }
-    </script>
+
   </body>
 </html>

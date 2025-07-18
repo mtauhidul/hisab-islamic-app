@@ -1,18 +1,19 @@
 /**
- * @fileoverview Islamic Deed Verification API using Fanar API
+ * @fileoverview Islamic Deed Verification API using Fanar Chat API
  *
- * This module integrates with Fanar API (https://api.fanar.qa) to provide
- * authentic Islamic rulings on whether specific deeds are permissible (halal)
+ * This module integrates with Fanar Chat API (https://api.fanar.qa/docs#tag/Chat)
+ * to provide authentic Islamic rulings on whether specific deeds are permissible (halal)
  * or not permissible (haram) according to Islamic teachings.
  *
  * The integration uses:
- * - Islamic-RAG model for accurate rulings based on Islamic sources
- * - Preferred sources: Quran, Sunnah, Islam Q&A, IslamWeb, Dorar
+ * - Chat completions endpoint with Islamic-RAG model
+ * - Contextual conversation for accurate rulings
+ * - Islamic sources: Quran, Sunnah, Islam Q&A, IslamWeb, Dorar
  * - Support for both Arabic and English queries
  * - Rate limit: 50 requests/minute
  *
  * @requires VITE_FANAR_API_KEY environment variable
- * @see https://api.fanar.qa/docs for full API documentation
+ * @see https://api.fanar.qa/docs#tag/Chat for full API documentation
  */
 
 interface Evidence {
@@ -23,7 +24,9 @@ interface Evidence {
 interface DeedVerificationResponse {
   verdict: 'sin' | 'not_sin' | 'contradictory';
   evidence: Evidence[];
-  summary?: string;
+  summary: string;
+  reasoning: string;
+  brief_verdict: string;
 }
 
 interface FanarReference {
@@ -31,6 +34,41 @@ interface FanarReference {
   number: number;
   source: string;
   content: string;
+}
+
+interface FanarChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+interface FanarChatRequest {
+  model: string;
+  messages: FanarChatMessage[];
+  max_tokens?: number;
+  temperature?: number;
+  stream?: boolean;
+  stop?: string[];
+}
+
+interface FanarChatResponse {
+  id: string;
+  object: string;
+  created: number;
+  model: string;
+  choices: Array<{
+    index: number;
+    message: {
+      role: string;
+      content: string;
+      references?: FanarReference[];
+    };
+    finish_reason: string;
+  }>;
+  usage: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
 }
 
 /**
@@ -46,247 +84,204 @@ export const verifyDeed = async (
 ): Promise<DeedVerificationResponse> => {
   const apiKey = import.meta.env.VITE_FANAR_API_KEY;
 
-  // Check if API key is properly configured
   if (!apiKey || apiKey === 'your_fanar_api_key_here') {
-    // Use Reminder.dev API as primary option when Fanar is not configured
-    try {
-      // Using Reminder.dev API for Islamic deed verification (primary)
-      const { verifyDeedWithReminderDev } = await import('./reminderDev');
-      return await verifyDeedWithReminderDev(query, language);
-    } catch {
-      // Reminder.dev API failed
-
-      // Return a helpful mock response for development
-      // All APIs unavailable - using mock response
-
-      return {
-        verdict: 'sin',
-        evidence: [
-          {
-            source: 'API Services Unavailable',
-            snippet: `Unable to verify "${query}" at this time. Please check your internet connection and try again later.`,
-          },
-        ],
-        summary: 'Service temporarily unavailable. Please try again later.',
-      };
-    }
+    throw new Error(
+      'Fanar API key is required. Please configure VITE_FANAR_API_KEY environment variable.'
+    );
   }
 
-  const apiUrl = 'https://api.fanar.qa/v1/chat/completions';
-
-  // Construct the prompt for Islamic deed verification
-  const promptText =
+  const systemPrompt =
     language === 'ar'
-      ? `كعالم إسلامي، يرجى تحليل العمل التالي وتحديد ما إذا كان مسموحاً (حلال) أم غير مسموح (حرام) في الإسلام.
+      ? `أنت عالم إسلامي متخصص في الفقه. سيسألك المستخدم عن حكم فعل معين. قدم:
+1. حكم مختصر واضح (حرام أو حلال)
+2. تفسير موجز (جملة واحدة)
+3. الأدلة التفصيلية من القرآن والسنة
+أجب بـ "حرام" إذا كان الفعل محرماً، أو "حلال" إذا كان مباحاً.`
+      : `You are an Islamic scholar specialized in Islamic jurisprudence. When asked about a deed, provide:
+1. A clear brief ruling (sin or not_sin)
+2. A concise explanation (one sentence)
+3. Detailed evidence from Quran and Sunnah
+Answer with "sin" if the deed is haram (forbidden) or "not_sin" if it is halal (permissible).`;
 
-العمل المطلوب تحليله: "${query}"
-
-يرجى تقديم:
-1. حكم واضح: "مسموح" أو "غير_مسموح"
-2. أدلة من المصادر الإسلامية (القرآن، الحديث، إجماع العلماء)
-
-اكتب إجابتك بصيغة JSON كما يلي:
-{
-  "verdict": "مسموح" or "غير_مسموح",
-  "evidence": [
-    {
-      "source": "اسم المصدر (مثل: القرآن 2:275، صحيح البخاري 1234، إلخ)",
-      "snippet": "النص أو التفسير ذو الصلة"
-    }
-  ]
-}
-
-يرجى أن تكون شاملاً وتقدم مصادر إسلامية أصيلة لحكمك.`
-      : `As an Islamic scholar, please analyze the following action and determine if it is permissible (halal) or not permissible (haram) in Islam. 
-
-Action to analyze: "${query}"
-
-Please provide:
-1. A clear verdict: "permissible" or "not_permissible"
-2. Evidence from Islamic sources (Quran, Hadith, scholarly consensus)
-
-Format your response as a JSON object with the following structure:
-{
-  "verdict": "permissible" or "not_permissible",
-  "evidence": [
-    {
-      "source": "source name (e.g., Quran 2:275, Sahih Bukhari 1234, etc.)",
-      "snippet": "relevant text or explanation"
-    }
-  ]
-}
-
-Please be thorough and provide authentic Islamic sources for your ruling.`;
+  const userPrompt =
+    language === 'ar'
+      ? `ما حكم: ${query}؟ أجب بـ "حرام" أو "حلال" مع الأدلة.`
+      : `What is the Islamic ruling on: ${query}? Answer with "sin" or "not_sin" and provide evidence.`;
 
   try {
-    const response = await fetch(apiUrl, {
+    const requestBody: FanarChatRequest = {
+      model: 'Islamic-RAG',
+      messages: [
+        {
+          role: 'system',
+          content: systemPrompt,
+        },
+        {
+          role: 'user',
+          content: userPrompt,
+        },
+      ],
+      max_tokens: 1000,
+      temperature: 0.1,
+    };
+
+    const response = await fetch('https://api.fanar.qa/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({
-        model: 'Islamic-RAG',
-        messages: [
-          {
-            role: 'user',
-            content: promptText,
-          },
-        ],
-        max_tokens: 1000,
-        temperature: 0.1,
-        // Use Islamic sources for RAG
-        preferred_sources: ['quran', 'sunnah', 'islam_qa', 'islamweb_fatwa', 'dorar'],
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-
-      if (response.status === 401) {
-        throw new Error(
-          'Invalid Fanar API key. Please check:\n' +
-            '1. Your API key is correct in the .env file\n' +
-            '2. Your API key has been activated by Fanar\n' +
-            '3. You have access to the Islamic-RAG model\n' +
-            'Request access at: https://api.fanar.qa/request'
-        );
-      }
-
-      if (response.status === 429) {
-        throw new Error('Rate limit exceeded. Please wait a moment and try again.');
-      }
-
-      throw new Error(
-        `Fanar API error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`
-      );
+      const errorText = await response.text();
+      throw new Error(`Fanar API error: ${response.status} - ${errorText}`);
     }
 
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content;
-    const references: FanarReference[] = data.choices?.[0]?.message?.references || [];
+    const data: FanarChatResponse = await response.json();
 
-    if (!content) {
+    if (!data.choices || data.choices.length === 0) {
       throw new Error('No response from Fanar API');
     }
 
-    // Try to parse JSON response
-    let parsedResponse;
-    try {
-      // Extract JSON from response if it's wrapped in text
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      const jsonStr = jsonMatch ? jsonMatch[0] : content;
-      parsedResponse = JSON.parse(jsonStr);
-    } catch {
-      // Fallback: analyze the text response
-      const isPermissible =
-        content.toLowerCase().includes('permissible') &&
-        !content.toLowerCase().includes('not permissible') &&
-        !content.toLowerCase().includes('haram') &&
-        !content.toLowerCase().includes('forbidden');
+    const assistantMessage = data.choices[0].message;
+    const content = assistantMessage.content.toLowerCase();
+    const references = assistantMessage.references || [];
 
-      parsedResponse = {
-        verdict: isPermissible ? 'permissible' : 'not_permissible',
-        evidence:
-          references.length > 0
-            ? references.map((ref: FanarReference) => ({
-                source: ref.source || 'Islamic Source',
-                snippet: ref.content || content.substring(0, 200) + '...',
-              }))
-            : [
-                {
-                  source: 'Islamic Analysis',
-                  snippet: content.substring(0, 300) + '...',
-                },
-              ],
-      };
+    // Determine verdict based on response
+    let verdict: 'sin' | 'not_sin' | 'contradictory' = 'contradictory';
+
+    if (language === 'ar') {
+      if (content.includes('حرام') || content.includes('محرم')) {
+        verdict = 'sin';
+      } else if (
+        content.includes('حلال') ||
+        content.includes('مباح') ||
+        content.includes('مستحب') ||
+        content.includes('مندوب')
+      ) {
+        verdict = 'not_sin';
+      }
+    } else {
+      // Check for forbidden/haram keywords first
+      if (
+        content.includes('haram') ||
+        content.includes('forbidden') ||
+        content.includes('prohibited') ||
+        content.includes('not permissible')
+      ) {
+        verdict = 'sin';
+      }
+      // Check for permissible/encouraged keywords
+      else if (
+        content.includes('halal') ||
+        content.includes('permissible') ||
+        content.includes('allowed') ||
+        content.includes('encouraged') ||
+        content.includes('recommended') ||
+        content.includes('virtuous') ||
+        content.includes('good deed') ||
+        content.includes('charity') ||
+        content.includes('donation')
+      ) {
+        verdict = 'not_sin';
+      }
+      // Only check for "sin" if it's not in context of "not_sin"
+      else if (content.includes('sin') && !content.includes('not_sin')) {
+        verdict = 'sin';
+      }
     }
 
-    // Add references from Fanar's RAG system if available
-    if (
-      references.length > 0 &&
-      (!parsedResponse.evidence || parsedResponse.evidence.length === 0)
-    ) {
-      parsedResponse.evidence = references.map((ref: FanarReference) => ({
-        source: ref.source || `Reference ${ref.number || ''}`,
-        snippet: ref.content || '',
-      }));
+    // Convert references to evidence format
+    const evidence: Evidence[] = references.map((ref) => ({
+      source: ref.source || 'Islamic Sources',
+      snippet: ref.content || '',
+    }));
+
+    // If no references, extract evidence from the response content
+    if (evidence.length === 0) {
+      evidence.push({
+        source: 'Fanar Islamic AI',
+        snippet: assistantMessage.content,
+      });
     }
 
-    // Format the evidence for better user experience
-    const formattedEvidence = formatEvidenceForUser(parsedResponse.evidence || []);
-    const summary = summarizeResponse(content);
+    // Extract brief verdict and reasoning
+    const brief_verdict = extractBriefVerdict(assistantMessage.content, verdict, language);
+    const reasoning = extractReasoning(assistantMessage.content, language);
 
     return {
-      verdict:
-        parsedResponse.verdict === 'permissible' || parsedResponse.verdict === 'مسموح'
-          ? 'not_sin'
-          : 'sin',
-      evidence:
-        formattedEvidence.length > 0
-          ? formattedEvidence
-          : [
-              {
-                source: 'Islamic Analysis',
-                snippet: 'Analysis completed based on Islamic teachings',
-              },
-            ],
-      summary,
+      verdict,
+      evidence,
+      summary: assistantMessage.content,
+      reasoning,
+      brief_verdict,
     };
   } catch (error) {
-    console.error('Error verifying deed with Fanar API:', error);
-    throw new Error('Failed to verify deed. Please try again.');
+    console.error('Fanar API error:', error);
+    throw new Error(
+      error instanceof Error ? error.message : 'Failed to verify deed with Fanar API'
+    );
   }
 };
 
 /**
- * Summarize a long response into key points
+ * Extract a brief verdict statement from the response
  */
-function summarizeResponse(text: string): string {
-  // Remove HTML tags
-  const cleanText = text.replace(/<[^>]*>/g, '').trim();
-
-  // Split into sentences
-  const sentences = cleanText.split(/[.!?]+/).filter((s) => s.trim().length > 10);
-
-  if (sentences.length === 0) return cleanText.substring(0, 150) + '...';
-
-  // Take the first sentence (usually contains the main verdict)
-  let summary = sentences[0].trim();
-
-  // If the first sentence is very short or doesn't contain key verdict words, add the second one
-  if (
-    (summary.length < 30 ||
-      !/\b(permissible|forbidden|haram|halal|allowed|prohibited)\b/i.test(summary)) &&
-    sentences.length > 1
-  ) {
-    summary += '. ' + sentences[1].trim();
-  }
-
-  // Ensure it's not too long but complete
-  if (summary.length > 200) {
-    // Try to cut at a natural break point
-    const words = summary.split(' ');
-    let truncated = '';
-    for (const word of words) {
-      if ((truncated + word).length > 180) break;
-      truncated += (truncated ? ' ' : '') + word;
+function extractBriefVerdict(
+  _content: string,
+  verdict: 'sin' | 'not_sin' | 'contradictory',
+  language: string
+): string {
+  if (language === 'ar') {
+    if (verdict === 'sin') {
+      return 'هذا الفعل محرم في الإسلام';
+    } else if (verdict === 'not_sin') {
+      return 'هذا الفعل مباح في الإسلام';
+    } else {
+      return 'الحكم غير واضح - يحتاج مراجعة';
     }
-    summary = truncated + '.';
+  } else {
+    if (verdict === 'sin') {
+      return 'This action is forbidden (haram) in Islam';
+    } else if (verdict === 'not_sin') {
+      return 'This action is permissible (halal) in Islam';
+    } else {
+      return 'The ruling is unclear - requires further review';
+    }
   }
-
-  return summary;
 }
 
 /**
- * Format evidence to show only the most relevant sources (but keep them complete)
+ * Extract reasoning from the response content
  */
-function formatEvidenceForUser(evidence: Evidence[]): Evidence[] {
-  // Limit to top 3 most relevant sources but keep them complete
-  const limitedEvidence = evidence.slice(0, 3);
+function extractReasoning(content: string, language: string): string {
+  // Split into sentences
+  const sentences = content.split(/[.!?]+/).filter((s) => s.trim().length > 10);
 
-  return limitedEvidence.map((ev) => ({
-    source: ev.source,
-    snippet: ev.snippet, // Keep the full snippet for detailed sources
-  }));
+  if (sentences.length === 0) {
+    return language === 'ar' ? 'بناءً على التعاليم الإسلامية' : 'Based on Islamic teachings';
+  }
+
+  // Look for explanatory sentences
+  const explanatoryWords =
+    language === 'ar'
+      ? ['لأن', 'بسبب', 'حيث', 'إذ', 'نظراً', 'وفقاً']
+      : ['because', 'since', 'as', 'due to', 'according to', 'based on'];
+
+  const explanatorySentence = sentences.find((sentence) =>
+    explanatoryWords.some((word) => sentence.toLowerCase().includes(word.toLowerCase()))
+  );
+
+  if (explanatorySentence) {
+    return explanatorySentence.trim();
+  }
+
+  // Fallback: return first substantial sentence
+  const substantialSentence = sentences.find((s) => s.trim().length > 30);
+  return (
+    substantialSentence?.trim() ||
+    (language === 'ar' ? 'بناءً على التعاليم الإسلامية' : 'Based on Islamic teachings')
+  );
 }

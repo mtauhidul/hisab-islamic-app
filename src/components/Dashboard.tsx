@@ -1,4 +1,3 @@
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -7,9 +6,7 @@ import { useSinCounter } from '@/hooks/useSinCounter';
 import { useTrendData } from '@/hooks/useTrendData';
 import { verifyDeed } from '@/lib/api';
 import {
-  AlertTriangle,
   BarChart3,
-  CheckCircle,
   Loader2,
   LogOut,
   Minus,
@@ -18,7 +15,6 @@ import {
   Shield,
   Sun,
   TrendingDown,
-  XCircle,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import {
@@ -42,25 +38,135 @@ interface Evidence {
 interface VerificationResult {
   verdict: 'sin' | 'not_sin' | 'contradictory';
   evidence: Evidence[];
-  summary?: string;
+  summary: string;
+  reasoning: string;
+  brief_verdict: string;
+}
+
+/**
+ * Component for displaying individual evidence cards with proper formatting
+ */
+function ImprovedEvidenceCard({ evidence, index }: { evidence: Evidence; index: number }) {
+  const [isCopied, setIsCopied] = useState(false);
+  const contentText = evidence.snippet || '';
+  // Clean up the content by removing any trailing [...] artifacts
+  const displayText = contentText.replace(/\s*\[\.\.\.\]\s*$/, '').trim();
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(
+        `${evidence.source || 'Islamic Source'}\n\n${displayText}`
+      );
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+    }
+  };
+
+  // Minimal function to make URLs clickable
+  const formatTextWithLinks = (text: string) => {
+    if (!text) return [<span key="empty">No content available</span>];
+
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const parts = text.split(urlRegex);
+
+    return parts.map((part, i) => {
+      if (urlRegex.test(part)) {
+        return (
+          <a
+            key={i}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 dark:text-blue-400 underline break-all word-break-all overflow-wrap-anywhere"
+            style={{ wordBreak: 'break-all', overflowWrap: 'anywhere' }}
+          >
+            {part}
+          </a>
+        );
+      }
+      return part;
+    });
+  };
+
+  return (
+    <div className="bg-white dark:bg-zinc-800 rounded-lg border border-slate-200 dark:border-zinc-700 overflow-hidden hover:border-slate-300 dark:hover:border-zinc-600 transition-all duration-200">
+      {/* Modern Header */}
+      <div className="flex items-center justify-between p-3 xs:p-4 bg-slate-50 dark:bg-zinc-800/80 border-b border-slate-200 dark:border-zinc-700">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/30 dark:to-blue-800/30 flex items-center justify-center text-xs font-semibold text-blue-700 dark:text-blue-300 flex-shrink-0">
+            {index + 1}
+          </div>
+          <div className="min-w-0 flex-1">
+            <h4 className="font-medium text-slate-900 dark:text-zinc-100 text-xs xs:text-sm truncate">
+              {evidence.source || `Reference #${index + 1}`}
+            </h4>
+            <p className="text-xs text-slate-500 dark:text-zinc-500 mt-0.5">Islamic Source</p>
+          </div>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleCopy}
+          className="h-8 px-3 text-xs font-medium text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-100 hover:bg-white dark:hover:bg-zinc-700 transition-all duration-200 flex-shrink-0 rounded-md border border-transparent hover:border-slate-200 dark:hover:border-zinc-600"
+        >
+          {isCopied ? (
+            <span className="flex items-center gap-1">
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+              Done
+            </span>
+          ) : (
+            <span className="flex items-center gap-1">
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                />
+              </svg>
+              Copy
+            </span>
+          )}
+        </Button>
+      </div>
+
+      {/* Content */}
+      <div className="p-3 xs:p-4">
+        <div className="text-xs xs:text-sm text-slate-700 dark:text-zinc-300 leading-relaxed text-justify">
+          <div className="whitespace-pre-wrap break-words word-wrap overflow-wrap-anywhere">
+            {formatTextWithLinks(displayText)}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function Dashboard() {
   const { logout } = useAuth();
-  const { count, loading: counterLoading, increment, decrement, syncOfflineData } = useSinCounter();
+  const { count, loading: counterLoading, increment, decrement } = useSinCounter();
   const [selectedPeriod, setSelectedPeriod] = useState<TrendPeriod>(7);
   const {
     data: trendData,
     loading: trendLoading,
     getPercentageChange,
   } = useTrendData(selectedPeriod);
+
+  // Separate hook for counter stats to always get 7 and 30 day data
+  const { data: counterTrendData } = useTrendData(30); // Get 30 days for both week and month calculations
+
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
-      return (
-        localStorage.getItem('darkMode') === 'true' ||
-        (!localStorage.getItem('darkMode') &&
-          window.matchMedia('(prefers-color-scheme: dark)').matches)
-      );
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
     }
     return false;
   });
@@ -123,7 +229,6 @@ export default function Dashboard() {
   const toggleDarkMode = () => {
     const newMode = !darkMode;
     setDarkMode(newMode);
-    localStorage.setItem('darkMode', String(newMode));
     if (newMode) {
       document.documentElement.classList.add('dark');
     } else {
@@ -139,16 +244,6 @@ export default function Dashboard() {
       document.documentElement.classList.remove('dark');
     }
   }, [darkMode]);
-
-  // Handle online status change for syncing
-  useEffect(() => {
-    const handleOnline = () => {
-      syncOfflineData();
-    };
-
-    window.addEventListener('online', handleOnline);
-    return () => window.removeEventListener('online', handleOnline);
-  }, [syncOfflineData]);
 
   // Show loading state
   if (counterLoading) {
@@ -345,8 +440,8 @@ export default function Dashboard() {
               <Card className="rounded-xl p-3 xs:p-4 shadow-sm bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 transition-all duration-200 hover:shadow-md hover:scale-105 hover:border-slate-300 dark:hover:border-zinc-600">
                 <CardContent className="p-0 text-center">
                   <div className="text-xl xs:text-2xl sm:text-3xl font-bold text-slate-800 dark:text-zinc-100 font-mono">
-                    {trendData && trendData.length >= 7
-                      ? trendData.slice(-7).reduce((sum, d) => sum + d.count, 0)
+                    {counterTrendData && counterTrendData.length >= 7
+                      ? counterTrendData.slice(-7).reduce((sum, d) => sum + d.count, 0)
                       : 0}
                   </div>
                   <p className="text-xs sm:text-sm text-slate-600 dark:text-zinc-400">This Week</p>
@@ -355,8 +450,18 @@ export default function Dashboard() {
               <Card className="rounded-xl p-3 xs:p-4 shadow-sm bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 transition-all duration-200 hover:shadow-md hover:scale-105 hover:border-slate-300 dark:hover:border-zinc-600">
                 <CardContent className="p-0 text-center">
                   <div className="text-xl xs:text-2xl sm:text-3xl font-bold text-slate-800 dark:text-zinc-100 font-mono">
-                    {trendData && trendData.length >= 30
-                      ? trendData.slice(-30).reduce((sum, d) => sum + d.count, 0)
+                    {counterTrendData && counterTrendData.length > 0
+                      ? (() => {
+                          const now = new Date();
+                          const currentMonth = now.getMonth();
+                          const currentYear = now.getFullYear();
+                          return counterTrendData
+                            .filter((d) => {
+                              const [year, month] = d.date.split('-').map(Number);
+                              return year === currentYear && month - 1 === currentMonth;
+                            })
+                            .reduce((sum, d) => sum + d.count, 0);
+                        })()
                       : 0}
                   </div>
                   <p className="text-xs sm:text-sm text-slate-600 dark:text-zinc-400">This Month</p>
@@ -399,76 +504,133 @@ export default function Dashboard() {
                 </Button>
 
                 {verificationResult && (
-                  <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
-                    <div
-                      className={`p-3 xs:p-4 sm:p-5 rounded-lg border-2 transition-all ${
-                        verificationResult.verdict === 'sin'
-                          ? 'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20'
-                          : verificationResult.verdict === 'contradictory'
-                            ? 'border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/20'
-                            : 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 mb-2 xs:mb-3">
-                        {verificationResult.verdict === 'sin' ? (
-                          <XCircle className="w-4 h-4 xs:w-5 xs:h-5 sm:w-6 sm:h-6 text-red-600 dark:text-red-400" />
-                        ) : verificationResult.verdict === 'contradictory' ? (
-                          <AlertTriangle className="w-4 h-4 xs:w-5 xs:h-5 sm:w-6 sm:h-6 text-yellow-600 dark:text-yellow-400" />
-                        ) : (
-                          <CheckCircle className="w-4 h-4 xs:w-5 xs:h-5 sm:w-6 sm:h-6 text-green-600 dark:text-green-400" />
-                        )}
-                        <Badge
-                          variant={
-                            verificationResult.verdict === 'sin'
-                              ? 'destructive'
-                              : verificationResult.verdict === 'contradictory'
-                                ? 'outline'
-                                : 'secondary'
-                          }
-                          className="text-xs sm:text-sm font-medium px-2 xs:px-3 py-1"
-                        >
-                          {verificationResult.verdict === 'sin'
-                            ? 'Not Permissible'
-                            : verificationResult.verdict === 'contradictory'
-                              ? 'Contradictory'
-                              : 'Permissible'}
-                        </Badge>
+                  <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 mt-4 xs:mt-6 space-y-4">
+                    {/* Compact Summary Card */}
+                    <div className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-zinc-800 dark:to-zinc-900 rounded-xl p-4 xs:p-5 border border-slate-200 dark:border-zinc-700">
+                      <div className="flex items-start gap-3">
+                        <div className="w-7 h-7 rounded-full bg-white dark:bg-zinc-800 shadow-sm flex items-center justify-center flex-shrink-0 border border-slate-200 dark:border-zinc-600">
+                          <Shield className="w-3.5 h-3.5 text-slate-600 dark:text-zinc-400" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-medium text-slate-900 dark:text-zinc-50 text-sm xs:text-base mb-1">
+                            Islamic Perspective
+                          </h3>
+                          {verificationResult.summary && (
+                            <p className="text-xs xs:text-sm text-slate-700 dark:text-zinc-300 leading-relaxed break-words overflow-wrap-anywhere text-justify">
+                              {verificationResult.summary}
+                            </p>
+                          )}
+                        </div>
                       </div>
 
-                      {/* Summary - Brief ruling */}
-                      {verificationResult.summary && (
-                        <div className="mb-3 xs:mb-4">
-                          <p className="text-sm xs:text-base text-slate-800 dark:text-zinc-100 leading-relaxed break-words">
-                            {verificationResult.summary}
-                          </p>
-                        </div>
-                      )}
+                      <div className="mt-3 pt-3 border-t border-slate-200 dark:border-zinc-600">
+                        <p className="text-xs text-slate-600 dark:text-zinc-400 flex items-start gap-1">
+                          <span className="font-medium">Note:</span>
+                          <span>
+                            For educational purposes. Consult qualified scholars for specific
+                            rulings.
+                          </span>
+                        </p>
+                      </div>
+                    </div>
 
-                      {/* Evidence - Detailed sources (collapsible) */}
-                      {verificationResult.evidence && verificationResult.evidence.length > 0 && (
+                    {/* Enhanced Sources Section */}
+                    {verificationResult.evidence && verificationResult.evidence.length > 0 && (
+                      <div className="bg-white dark:bg-zinc-800 rounded-xl border border-slate-200 dark:border-zinc-700 overflow-hidden shadow-sm">
                         <details className="group">
-                          <summary className="cursor-pointer text-xs xs:text-sm font-medium text-slate-600 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-zinc-200 transition-colors flex items-center gap-1">
-                            <span>View Sources ({verificationResult.evidence.length})</span>
-                            <span className="text-xs">▼</span>
-                          </summary>
-                          <div className="mt-3 space-y-3">
-                            {verificationResult.evidence.map((evidence, index) => (
-                              <div
-                                key={index}
-                                className="text-xs sm:text-sm text-slate-700 dark:text-zinc-300 pl-3 border-l-2 border-slate-300 dark:border-zinc-600 bg-slate-50 dark:bg-zinc-800/50 p-2 rounded-r"
-                              >
-                                <div className="font-medium text-slate-800 dark:text-zinc-100 mb-1">
-                                  {evidence.source}
+                          <summary className="cursor-pointer list-none select-none">
+                            <div className="flex items-center justify-between p-4 xs:p-5 hover:bg-slate-50 dark:hover:bg-zinc-800/50 transition-all duration-200">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                                  <svg
+                                    className="w-4 h-4 text-blue-600 dark:text-blue-400"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+                                    />
+                                  </svg>
                                 </div>
-                                <div className="italic leading-relaxed break-words">
-                                  "{evidence.snippet}"
+                                <div>
+                                  <h4 className="font-medium text-slate-900 dark:text-zinc-50 text-sm xs:text-base">
+                                    Sources & References
+                                  </h4>
+                                  <p className="text-xs text-slate-600 dark:text-zinc-400">
+                                    {verificationResult.evidence.length} scholarly{' '}
+                                    {verificationResult.evidence.length === 1
+                                      ? 'reference'
+                                      : 'references'}
+                                  </p>
                                 </div>
                               </div>
-                            ))}
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-slate-500 dark:text-zinc-500 hidden xs:inline">
+                                  View Details
+                                </span>
+                                <div className="w-5 h-5 rounded-full bg-slate-100 dark:bg-zinc-700 flex items-center justify-center group-open:rotate-180 transition-transform duration-200">
+                                  <svg
+                                    className="w-3 h-3 text-slate-600 dark:text-zinc-400"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M19 9l-7 7-7-7"
+                                    />
+                                  </svg>
+                                </div>
+                              </div>
+                            </div>
+                          </summary>
+
+                          <div className="border-t border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-900/50">
+                            <div className="p-4 xs:p-5">
+                              <div className="mb-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                                <div className="flex gap-2">
+                                  <svg
+                                    className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                    />
+                                  </svg>
+                                  <p className="text-xs text-amber-700 dark:text-amber-300">
+                                    <strong>Research Encouragement:</strong> These sources present
+                                    various scholarly perspectives. Cross-reference with additional
+                                    sources and consult qualified Islamic scholars for comprehensive
+                                    understanding.
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="space-y-3 max-h-[600px] xs:max-h-[700px] overflow-y-auto custom-scrollbar">
+                                {verificationResult.evidence.map((evidence, index) => (
+                                  <ImprovedEvidenceCard
+                                    key={index}
+                                    evidence={evidence}
+                                    index={index}
+                                  />
+                                ))}
+                              </div>
+                            </div>
                           </div>
                         </details>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </CardContent>

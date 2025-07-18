@@ -17,11 +17,6 @@
 **Problem**: `apple-mobile-web-app-capable` deprecated warning
 **Solution**: Added proper `mobile-web-app-capable` meta tag
 
-### 4. Service Worker Cache Issues
-
-**Problem**: Service worker trying to cache non-existent files
-**Solution**: Updated cache URLs to match Vite build output
-
 ## 🔄 Firebase Authentication Setup Required
 
 ### The Issue

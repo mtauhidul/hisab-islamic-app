@@ -17,15 +17,3 @@ describe('Date utilities', () => {
     expect(formatted).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 });
-
-/**
- * Test localStorage helpers
- */
-describe('LocalStorage helpers', () => {
-  it('should create correct offline storage keys', () => {
-    const uid = 'test-user-123';
-    const date = '2025-01-15';
-    const expectedKey = `sin-count-${uid}-${date}`;
-    expect(expectedKey).toBe('sin-count-test-user-123-2025-01-15');
-  });
-});

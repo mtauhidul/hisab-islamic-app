@@ -34,8 +34,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     let unsubscribe: (() => void) | undefined;
     let isMounted = true;
     let timeoutId: NodeJS.Timeout;
-    const startTime = Date.now();
-    const MIN_LOADING_TIME = 500; // Minimum loading time to prevent flash
 
     const setupAuth = async () => {
       try {
@@ -61,50 +59,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           auth,
           (user) => {
             if (!isMounted) return;
-
-            // Ensure minimum loading time to prevent flash
-            const elapsedTime = Date.now() - startTime;
-            const remainingTime = Math.max(0, MIN_LOADING_TIME - elapsedTime);
-
-            setTimeout(() => {
-              if (isMounted) {
-                setUser(user);
-                setLoading(false);
-                setError(null);
-              }
-            }, remainingTime);
+            setUser(user);
+            setLoading(false);
+            setError(null);
           },
           (authError) => {
             if (!isMounted) return;
             console.error('❌ AuthProvider: Auth state listener error:', authError);
-
-            // Ensure minimum loading time even for errors
-            const elapsedTime = Date.now() - startTime;
-            const remainingTime = Math.max(0, MIN_LOADING_TIME - elapsedTime);
-
-            setTimeout(() => {
-              if (isMounted) {
-                setError(`Authentication error: ${authError.message}`);
-                setLoading(false);
-              }
-            }, remainingTime);
+            setError(`Authentication error: ${authError.message}`);
+            setLoading(false);
           }
         );
       } catch (initError: unknown) {
         if (!isMounted) return;
         const errorMessage = initError instanceof Error ? initError.message : 'Unknown error';
         console.error('❌ AuthProvider: Firebase Auth initialization failed:', initError);
-
-        // Ensure minimum loading time even for errors
-        const elapsedTime = Date.now() - startTime;
-        const remainingTime = Math.max(0, MIN_LOADING_TIME - elapsedTime);
-
-        setTimeout(() => {
-          if (isMounted) {
-            setError(`Failed to initialize authentication: ${errorMessage}`);
-            setLoading(false);
-          }
-        }, remainingTime);
+        setError(`Failed to initialize authentication: ${errorMessage}`);
+        setLoading(false);
       }
     };
 
