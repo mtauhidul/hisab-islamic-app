@@ -183,7 +183,13 @@ export default function HomePage({ onGetStarted }: HomePageProps) {
           <Card className="p-8 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">
             <CardContent className="p-0">
               <div className="flex items-center justify-center gap-3 mb-4">
-                <Shield className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm border border-zinc-200">
+                  <img 
+                    src="/fanar_logo.svg" 
+                    alt="Fanar Logo" 
+                    className="w-8 h-8 object-contain"
+                  />
+                </div>
                 <h2 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-white">
                   Powered by Fanar API
                 </h2>
@@ -220,13 +226,25 @@ export default function HomePage({ onGetStarted }: HomePageProps) {
                 <h3 className="text-base font-semibold text-zinc-900 dark:text-white mb-3">
                   Get in Touch
                 </h3>
-                <a
-                  href="mailto:mislam.tauhidul@gmail.com"
-                  className="inline-flex items-center gap-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors"
-                >
-                  <Mail className="w-4 h-4" />
-                  <span>mislam.tauhidul@gmail.com</span>
-                </a>
+                <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                  <a
+                    href="mailto:mislam.tauhidul@gmail.com"
+                    className="inline-flex items-center gap-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors"
+                  >
+                    <Mail className="w-4 h-4" />
+                    <span>mislam.tauhidul@gmail.com</span>
+                  </a>
+                  <span className="hidden sm:block text-zinc-400">•</span>
+                  <a
+                    href="https://mirtauhid.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors"
+                  >
+                    <ArrowRight className="w-4 h-4" />
+                    <span>mirtauhid.com</span>
+                  </a>
+                </div>
               </div>
             </CardContent>
           </Card>
